@@ -1,0 +1,136 @@
+/* ============================================================
+   MRAFIQ | مرافق — Design Tokens v1.0
+   Plateforme de conformité & protection des données (Loi 18-07)
+   Modes : light (défaut) / dark  —  Directions : ltr (FR) / rtl (AR)
+   Usage : <html lang="fr" dir="ltr" data-theme="light">
+   ============================================================ */
+
+:root {
+  /* ---------- Marque ---------- */
+  --brand-ink-900: #081C33;   /* Encre — fonds de marque, texte fort */
+  --brand-ink-800: #0B2545;
+  --brand-primary-700: #14498F; /* Bleu institutionnel — actions primaires (hover) */
+  --brand-primary-600: #1B5CB4; /* Bleu institutionnel — actions primaires */
+  --brand-primary-500: #2E74D6;
+  --brand-primary-100: #DCE9FA;
+  --brand-primary-050: #EFF5FD;
+  --brand-brass-500: #B08A3C;   /* Laiton — accent premium, marque uniquement */
+  --brand-brass-300: #D9BC7F;
+
+  /* ---------- États de conformité (moteur) ---------- */
+  --status-conforme: #178A50;
+  --status-conforme-bg: #E4F5EC;
+  --status-partiel: #B45D0C;
+  --status-partiel-bg: #FBEEDD;
+  --status-nonconforme: #C22D2D;
+  --status-nonconforme-bg: #FBE7E7;
+  --status-manquant: #5C6B82;
+  --status-manquant-bg: #ECF0F5;
+  --status-averifier: #6D3FC0;
+  --status-averifier-bg: #F0EAFB;
+
+  /* ---------- Gravité des écarts ---------- */
+  --severity-critique: #A11B1B;
+  --severity-eleve: #C2510A;
+  --severity-moyen: #B08A00;
+  --severity-faible: #4A7DBE;
+
+  /* ---------- Score (paliers configurables) ---------- */
+  --score-critique: #C22D2D;  /* 0–39 */
+  --score-faible:   #D97706;  /* 40–59 */
+  --score-inter:    #B08A00;  /* 60–79 */
+  --score-bon:      #2E8B57;  /* 80–94 */
+  --score-tresbon:  #178A50;  /* 95–100 */
+
+  /* ---------- Typographie ---------- */
+  --font-ui: "IBM Plex Sans", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "IBM Plex Sans", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, monospace; /* réf. juridiques, IDs, dates */
+
+  --text-xs: 0.75rem;    /* 12 — métadonnées, badges */
+  --text-sm: 0.8125rem;  /* 13 — tableaux denses, labels */
+  --text-base: 0.9375rem;/* 15 — corps */
+  --text-md: 1.0625rem;  /* 17 — intro, corps large */
+  --text-lg: 1.25rem;    /* 20 — titre de carte */
+  --text-xl: 1.5rem;     /* 24 — titre de page */
+  --text-2xl: 1.875rem;  /* 30 — titre de section d'accueil */
+  --text-3xl: 2.5rem;    /* 40 — hero, score */
+  --leading-tight: 1.25;
+  --leading-body: 1.6;
+  --leading-arabic: 1.8;  /* l'arabe respire davantage */
+
+  /* ---------- Rayons / ombres / rythme ---------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --shadow-card: 0 1px 2px rgba(8, 28, 51, .05), 0 4px 16px rgba(8, 28, 51, .06);
+  --shadow-pop: 0 8px 30px rgba(8, 28, 51, .16);
+  --space-unit: 4px; /* échelle : 4 8 12 16 24 32 48 64 */
+
+  /* ---------- Mouvement ---------- */
+  --ease-out: cubic-bezier(.22, .8, .36, 1);
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+}
+
+/* ================= MODE CLAIR (défaut) ================= */
+:root, [data-theme="light"] {
+  --bg-app: #F5F7FB;          /* fond application */
+  --bg-surface: #FFFFFF;      /* cartes, panneaux */
+  --bg-sunken: #EDF1F7;       /* zones en retrait, thead */
+  --bg-sidebar: #0B2545;      /* navigation — encre, les deux modes */
+  --border: #E1E7F0;
+  --border-strong: #C6D1E0;
+  --text-primary: #14212F;
+  --text-secondary: #51617A;
+  --text-muted: #8393A9;
+  --text-on-dark: #F2F6FB;
+  --link: var(--brand-primary-600);
+  --focus-ring: #2E74D6;
+}
+
+/* ================= MODE SOMBRE ================= */
+[data-theme="dark"] {
+  --bg-app: #0A111E;
+  --bg-surface: #101A2B;
+  --bg-sunken: #0D1524;
+  --bg-sidebar: #081C33;
+  --border: #1E2B41;
+  --border-strong: #2B3B57;
+  --text-primary: #E8EEF7;
+  --text-secondary: #A5B3C9;
+  --text-muted: #6E7F99;
+  --text-on-dark: #F2F6FB;
+  --link: #6EA8F0;
+  --focus-ring: #6EA8F0;
+
+  --brand-primary-600: #2E74D6;
+  --brand-primary-700: #4A8AE2;
+  --brand-primary-100: #17335C;
+  --brand-primary-050: #122845;
+
+  --status-conforme: #4CC38A;      --status-conforme-bg: #12301F;
+  --status-partiel: #E8A253;       --status-partiel-bg: #33230F;
+  --status-nonconforme: #F07575;   --status-nonconforme-bg: #3A1414;
+  --status-manquant: #9AA8BD;      --status-manquant-bg: #1B2536;
+  --status-averifier: #A98BE8;     --status-averifier-bg: #251A3D;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, .4), 0 6px 20px rgba(0, 0, 0, .35);
+}
+
+/* ================= BASES BIDIRECTIONNELLES =================
+   Règle : utiliser exclusivement des propriétés logiques
+   (margin-inline-start, padding-inline-end, inset-inline…)
+   Jamais left/right en dur dans les composants.              */
+html[dir="rtl"] body { font-family: var(--font-arabic); line-height: var(--leading-arabic); }
+html[dir="ltr"] body { font-family: var(--font-ui); line-height: var(--leading-body); }
+
+/* Données (IDs, articles de loi, dates) restent LTR même en AR */
+.data, .ref-juridique { font-family: var(--font-data); direction: ltr; unicode-bidi: isolate; }
+
+/* Accessibilité */
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

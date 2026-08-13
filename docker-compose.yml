@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mrafiq
+      POSTGRES_USER: mrafiq
+      POSTGRES_PASSWORD: mrafiq
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U mrafiq"], interval: 5s, retries: 10 }
+
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    build: ./backend
+    environment:
+      SECRET_KEY: change-me-in-production
+      DEBUG: "0"
+      ALLOWED_HOSTS: "*"
+      DATABASE_URL: postgres://mrafiq:mrafiq@db:5432/mrafiq
+      REDIS_URL: redis://redis:6379/0
+      CELERY_EAGER: "0"
+      CORS_ORIGINS: http://localhost
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    ports: ["8000:8000"]
+
+  worker:
+    build: ./backend
+    command: celery -A mrafiq worker -l info
+    environment:
+      DATABASE_URL: postgres://mrafiq:mrafiq@db:5432/mrafiq
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: change-me-in-production
+    depends_on: [backend]
+
+  frontend:
+    build: ./frontend
+    ports: ["80:80"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:
