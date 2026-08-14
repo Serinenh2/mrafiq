@@ -17,6 +17,7 @@ class AnswerSerializer(serializers.ModelSerializer):
 class DiagnosticSerializer(serializers.ModelSerializer):
     answers = AnswerSerializer(many=True, read_only=True)
     company_name = serializers.CharField(source='company.name', read_only=True)
+    processing_name = serializers.CharField(source='processing.name', default=None, read_only=True)
     class Meta:
         model = Diagnostic; fields = '__all__'
         read_only_fields = ['created_by']

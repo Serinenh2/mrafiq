@@ -4,9 +4,9 @@ from rest_framework.views import APIView
 from accounts.permissions import IsConsultantOrAdmin, scope_to_company
 from audit.utils import AuditModelViewSet
 from .models import (PersonalDataCategory, DataSubjectCategory, SecurityMeasure,
-                     Processor, ProcessingActivity)
+                     Processor, ProcessingActivity, ProcessingTemplate)
 from .serializers import (DataCatSerializer, SubjectCatSerializer, SecuritySerializer,
-                          ProcessorSerializer, ProcessingSerializer)
+                          ProcessorSerializer, ProcessingSerializer, ProcessingTemplateSerializer)
 
 class RefsView(APIView):
     def get(self, request):
@@ -15,6 +15,12 @@ class RefsView(APIView):
             'subject_categories': SubjectCatSerializer(DataSubjectCategory.objects.all(), many=True).data,
             'security_measures': SecuritySerializer(SecurityMeasure.objects.all(), many=True).data,
         })
+
+class ProcessingTemplateViewSet(viewsets.ReadOnlyModelViewSet):
+    """Catalogue de traitements types par secteur — référentiel partagé, lecture seule."""
+    queryset = ProcessingTemplate.objects.all()
+    serializer_class = ProcessingTemplateSerializer
+    pagination_class = None
 
 class ProcessorViewSet(AuditModelViewSet):
     serializer_class = ProcessorSerializer

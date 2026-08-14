@@ -34,14 +34,21 @@ REQS = [  # (code, domaine, texte)
     ('REQ-011','gouvernance',"Un responsable du traitement est désigné et identifié."),
     ('REQ-012','documentation',"Les documents justificatifs (procédures, chartes, contrats) sont disponibles."),
 ]
-QUESTIONS = [
-    ('Q-EMP','Général',"L'entreprise collecte-t-elle des données relatives à ses employés ?","هل تجمع المؤسسة بيانات تتعلق بموظفيها؟",True,10),
-    ('Q-EMP-PAIE','RH',"Gère-t-elle la paie en interne ?","هل تُسيّر الأجور داخليًا؟",False,11),
-    ('Q-CLI','Général',"L'entreprise collecte-t-elle des données relatives à ses clients ?","هل تجمع المؤسسة بيانات تتعلق بعملائها؟",True,20),
-    ('Q-VIDEO','Sécurité',"Utilise-t-elle la vidéosurveillance ?","هل تستخدم المراقبة بالفيديو؟",True,30),
-    ('Q-ACCES','Sécurité',"Utilise-t-elle un système de contrôle d'accès (badges, biométrie) ?","هل تستخدم نظام مراقبة الدخول (بطاقات، بصمات)؟",True,31),
-    ('Q-ST','Sous-traitance',"Des sous-traitants ont-ils accès aux données ?","هل يمكن للمناولين الوصول إلى البيانات؟",True,40),
-    ('Q-TRANSF','Transfert',"Existe-t-il un transfert de données vers l'étranger ?","هل يوجد نقل للبيانات نحو الخارج؟",True,50),
+QUESTIONS = [  # (code, section, texte_fr, texte_ar, root, order, pourquoi_fr, pourquoi_ar)
+    ('Q-EMP','Général',"L'entreprise collecte-t-elle des données relatives à ses employés ?","هل تجمع المؤسسة بيانات تتعلق بموظفيها؟",True,10,
+     "Toute gestion du personnel implique un traitement de données à caractère personnel à recenser en priorité.","إدارة الموظفين تعني معالجة بيانات شخصية يجب حصرها أولاً."),
+    ('Q-EMP-PAIE','RH',"Gère-t-elle la paie en interne ?","هل تُسيّر الأجور داخليًا؟",False,11,
+     "La paie implique des données financières et bancaires sensibles ; savoir si elle est internalisée oriente les mesures de sécurité à vérifier.","الأجور تتضمن بيانات مالية وبنكية حساسة، ومعرفة ما إذا كانت داخلية توجه تدابير الأمن الواجب التحقق منها."),
+    ('Q-CLI','Général',"L'entreprise collecte-t-elle des données relatives à ses clients ?","هل تجمع المؤسسة بيانات تتعلق بعملائها؟",True,20,
+     "Les données clients sont souvent le traitement le plus volumineux et le plus exposé de l'entreprise.","بيانات العملاء غالبًا ما تكون المعالجة الأكبر حجمًا والأكثر عرضة للمخاطر في المؤسسة."),
+    ('Q-VIDEO','Sécurité',"Utilise-t-elle la vidéosurveillance ?","هل تستخدم المراقبة بالفيديو؟",True,30,
+     "La vidéosurveillance capte des images de personnes identifiables et est strictement encadrée (finalité, durée de conservation, information des personnes).","المراقبة بالفيديو تلتقط صور أشخاص يمكن التعرف عليهم وتخضع لتأطير صارم (الغاية، مدة الحفظ، إعلام الأشخاص)."),
+    ('Q-ACCES','Sécurité',"Utilise-t-elle un système de contrôle d'accès (badges, biométrie) ?","هل تستخدم نظام مراقبة الدخول (بطاقات، بصمات)؟",True,31,
+     "Un système biométrique traite une donnée particulièrement sensible ; son usage doit être strictement proportionné au besoin.","النظام البيومتري يعالج بيانات حساسة بشكل خاص، ويجب أن يكون استخدامه متناسبًا تمامًا مع الحاجة."),
+    ('Q-ST','Sous-traitance',"Des sous-traitants ont-ils accès aux données ?","هل يمكن للمناولين الوصول إلى البيانات؟",True,40,
+     "Tout accès par un tiers doit être encadré par un contrat prévoyant des garanties de protection des données.","أي وصول من طرف ثالث يجب أن يُؤطَّر بعقد ينص على ضمانات حماية البيانات."),
+    ('Q-TRANSF','Transfert',"Existe-t-il un transfert de données vers l'étranger ?","هل يوجد نقل للبيانات نحو الخارج؟",True,50,
+     "Un transfert hors du territoire national est soumis à des conditions particulières qu'il faut identifier tôt.","النقل خارج التراب الوطني يخضع لشروط خاصة يجب تحديدها مبكرًا."),
 ]
 RULES = [
     ('Q-EMP','oui','show_question','Q-EMP-PAIE'),
@@ -91,9 +98,10 @@ class Command(BaseCommand):
         SystemSetting.objects.get_or_create(key='score_levels', defaults={'value': DEFAULT_SCORE_LEVELS})
 
         # --- questionnaire dynamique
-        for code, sec, fr, ar, root, order in QUESTIONS:
+        for code, sec, fr, ar, root, order, why_fr, why_ar in QUESTIONS:
             Question.objects.get_or_create(code=code, defaults={
-                'section': sec, 'text_fr': fr, 'text_ar': ar, 'is_root': root, 'order': order})
+                'section': sec, 'text_fr': fr, 'text_ar': ar, 'is_root': root, 'order': order,
+                'rationale_fr': why_fr, 'rationale_ar': why_ar})
         for qcode, val, act, target in RULES:
             QuestionRule.objects.get_or_create(
                 question=Question.objects.get(code=qcode), expected_value=val,

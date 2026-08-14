@@ -17,6 +17,19 @@ def visible_questions(diagnostic):
                 shown.add(r.target); changed = True
     return Question.objects.filter(active=True, code__in=shown).order_by('order'), answers
 
+def known_answers(diagnostic):
+    """Mémoire du dossier (§12) : dernière réponse connue par question, issue des
+    autres entretiens de la même entreprise."""
+    qs = (Answer.objects.filter(diagnostic__company=diagnostic.company)
+          .exclude(diagnostic=diagnostic).exclude(value='')
+          .select_related('question').order_by('question_id', '-updated_at'))
+    known = {}
+    for a in qs:
+        if a.question.code not in known:
+            known[a.question.code] = {'value': a.value, 'comment': a.comment,
+                                      'diagnostic_id': a.diagnostic_id, 'updated_at': a.updated_at}
+    return known
+
 def apply_rules(diagnostic, answer):
     """Retourne les effets déclenchés par une réponse (traitements proposés, modules)."""
     effects = {'proposed_processings': [], 'opened_modules': [], 'new_questions': []}

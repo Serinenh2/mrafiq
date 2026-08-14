@@ -8,6 +8,8 @@ class Question(models.Model):
     section = models.CharField(max_length=64, blank=True)
     text_fr = models.TextField()
     text_ar = models.TextField(blank=True)
+    rationale_fr = models.TextField('Pourquoi cette question ?', blank=True)
+    rationale_ar = models.TextField(blank=True)
     qtype = models.CharField(max_length=8, choices=QType.choices, default=QType.YESNO)
     choices = models.JSONField(default=list, blank=True)
     order = models.PositiveIntegerField(default=0)
@@ -29,9 +31,15 @@ class QuestionRule(models.Model):
     active = models.BooleanField(default=True)
 
 class Diagnostic(models.Model):
+    """Un entretien guidé (§11) : contexte + réponses collectées pour une entreprise."""
     class Status(models.TextChoices):
         EN_COURS = 'en_cours'; TERMINE = 'termine'
     company = models.ForeignKey('companies.Company', on_delete=models.CASCADE, related_name='diagnostics')
+    service = models.CharField('Service', max_length=128, blank=True)
+    respondent_name = models.CharField('Responsable interrogé', max_length=128, blank=True)
+    respondent_role = models.CharField('Fonction', max_length=128, blank=True)
+    processing = models.ForeignKey('processing.ProcessingActivity', null=True, blank=True,
+                                   on_delete=models.SET_NULL, related_name='diagnostics')
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.EN_COURS)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -42,6 +50,7 @@ class Answer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='+')
     value = models.CharField(max_length=255, blank=True)
     comment = models.TextField(blank=True)
+    evidence = models.FileField('Pièce justificative', upload_to='diagnostic_evidence/%Y/%m/', null=True, blank=True)
     answered_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
     updated_at = models.DateTimeField(auto_now=True)
     class Meta: unique_together = [('diagnostic', 'question')]

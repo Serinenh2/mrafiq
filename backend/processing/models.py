@@ -78,3 +78,24 @@ class ProcessingActivity(models.Model):
         if not self.reference:
             self.reference = f'TRT-{self.pk:04d}'
             super().save(update_fields=['reference'])
+
+class ProcessingTemplate(models.Model):
+    """Catalogue de traitements types par secteur d'activité (référentiel importé)."""
+    ref_id = models.PositiveIntegerField(unique=True)
+    domain_fr = models.CharField(max_length=255)
+    domain_ar = models.CharField(max_length=255, blank=True)
+    name_fr = models.CharField(max_length=255)
+    name_ar = models.CharField(max_length=255, blank=True)
+    purpose_fr = models.TextField(blank=True)
+    purpose_ar = models.TextField(blank=True)
+    category_fr = models.TextField(blank=True)
+    category_ar = models.TextField(blank=True)
+    subject_categories_fr = models.TextField(blank=True)
+    subject_categories_ar = models.TextField(blank=True)
+    data_categories_fr = models.TextField(blank=True)
+    data_categories_ar = models.TextField(blank=True)
+    retention_fr = models.CharField(max_length=255, blank=True)
+    retention_ar = models.CharField(max_length=255, blank=True)
+
+    class Meta: ordering = ['domain_fr', 'name_fr']
+    def __str__(self): return f'{self.domain_fr} — {self.name_fr}'

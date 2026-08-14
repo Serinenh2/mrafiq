@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/client'
 import { useApp } from '../context/AppContext'
 import { StatusBadge, SeverityBadge, Gauge, DomainBars, Spinner } from '../components/ui'
+import CompanyForm from '../components/CompanyForm'
+import SectorTemplates from '../components/SectorTemplates'
 
 const dl = async (url, filename) => {
   const r = await api.get(url, { responseType: 'blob' })
@@ -62,27 +64,53 @@ export default function CompanyDetail() {
         ))}
       </div>
 
-      {tab === 'info' && <InfoTab company={company} score={score} lang={lang} t={t} />}
-      {tab === 'diagnostic' && <DiagnosticTab companyId={id} />}
-      {tab === 'processings' && <ProcessingsTab companyId={id} />}
+      {tab === 'info' && <InfoTab companyId={id} company={company} score={score} lang={lang} t={t} />}
+      {tab === 'diagnostic' && <DiagnosticTab companyId={id} sector={company.sector} />}
+      {tab === 'processings' && <ProcessingsTab companyId={id} sector={company.sector} />}
       {tab === 'gaps' && <GapsTab companyId={id} />}
       {tab === 'actions' && <ActionsTab companyId={id} />}
     </div>
   )
 }
 
-function InfoTab({ company, score, lang, t }) {
+function InfoTab({ companyId, company, score, lang, t }) {
+  const qc = useQueryClient()
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(null)
+  const update = useMutation({
+    mutationFn: (body) => api.patch(`/companies/${companyId}/`, body),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['company', companyId] }); setEditing(false) },
+  })
+
   const rows = [
-    ['companies.legalForm', company.legal_form], ['companies.rc', company.rc_number],
-    ['companies.wilaya', company.wilaya], ['companies.employees', company.employees_count],
-    ['companies.address', company.address], ['companies.contact',
-      `${company.contact_name || ''} ${company.contact_email || ''}`.trim()],
-    ['companies.itSystems', company.it_systems], ['companies.notes', company.notes],
+    ['companies.legalForm', company.legal_form], ['companies.sector', company.sector],
+    ['companies.mainActivity', company.main_activity], ['companies.rc', company.rc_number],
+    ['companies.nif', company.nif], ['companies.wilaya', company.wilaya],
+    ['companies.employees', company.employees_count], ['companies.address', company.address],
+    ['companies.contactName', company.contact_name], ['companies.contactEmail', company.contact_email],
+    ['companies.contactPhone', company.contact_phone],
+    ['companies.itSystems', company.it_systems], ['companies.itProviders', company.it_providers],
+    ['companies.notes', company.notes],
   ]
   return (
     <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
       <div className="card">
-        {rows.map(([k, v]) => (
+        {!editing && (
+          <div className="flex items-center mb-3">
+            <button className="btn-secondary btn-sm ms-auto" onClick={() => { setForm({ ...company }); setEditing(true) }}>
+              {t('companies.edit')}</button>
+          </div>
+        )}
+        {editing ? (
+          <>
+            <CompanyForm form={form} onChange={setForm} />
+            <div className="flex gap-2 mt-4">
+              <button className="btn-primary btn-sm" disabled={!form.name || update.isPending}
+                      onClick={() => update.mutate(form)}>{t('companies.save')}</button>
+              <button className="btn-ghost btn-sm" onClick={() => setEditing(false)}>{t('companies.cancel')}</button>
+            </div>
+          </>
+        ) : rows.map(([k, v]) => (
           <div key={k} className="flex gap-4 py-2 border-b border-line last:border-0 text-sm">
             <span className="w-44 shrink-0 text-ink-secondary">{t(k)}</span>
             <span className="min-w-0">{v || '—'}</span>
@@ -105,24 +133,41 @@ function InfoTab({ company, score, lang, t }) {
   )
 }
 
-function DiagnosticTab({ companyId }) {
+function DiagnosticTab({ companyId, sector }) {
   const { t, lang } = useApp()
   const qc = useQueryClient()
   const [effects, setEffects] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
+  const [showForm, setShowForm] = useState(false)
+  const [dismissedKnown, setDismissedKnown] = useState({})
+  const emptyForm = { service: '', respondent_name: '', respondent_role: '', processing: '' }
+  const [form, setForm] = useState(emptyForm)
+
   const { data: diags } = useQuery({ queryKey: ['diagnostics', companyId],
     queryFn: () => api.get('/diagnostics/').then((r) =>
       (r.data.results ?? r.data).filter((d) => String(d.company) === String(companyId))) })
-  const diag = diags?.[0]
+  const { data: procs } = useQuery({ queryKey: ['processings', companyId],
+    queryFn: () => api.get(`/processings/?company=${companyId}`).then((r) => r.data) })
+  const diag = diags?.find((d) => d.id === selectedId)
   const { data: questions } = useQuery({ queryKey: ['diag-questions', diag?.id], enabled: !!diag,
     queryFn: () => api.get(`/diagnostics/${diag.id}/questions/`).then((r) => r.data) })
 
   const createDiag = useMutation({
-    mutationFn: () => api.post('/diagnostics/', { company: companyId }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['diagnostics', companyId] }),
+    mutationFn: (body) => api.post('/diagnostics/', { company: companyId, ...body,
+      processing: body.processing || null }),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['diagnostics', companyId] })
+      setShowForm(false); setForm(emptyForm); setSelectedId(r.data.id)
+    },
   })
   const answer = useMutation({
-    mutationFn: ({ code, value }) =>
-      api.post(`/diagnostics/${diag.id}/answer/`, { question_code: code, value }),
+    mutationFn: ({ code, value, comment, evidence }) => {
+      const fd = new FormData()
+      fd.append('question_code', code); fd.append('value', value)
+      if (comment) fd.append('comment', comment)
+      if (evidence) fd.append('evidence', evidence)
+      return api.post(`/diagnostics/${diag.id}/answer/`, fd)
+    },
     onSuccess: (r) => {
       qc.setQueryData(['diag-questions', diag.id], r.data.questions)
       const e = r.data.effects
@@ -133,14 +178,88 @@ function DiagnosticTab({ companyId }) {
   })
 
   if (!diags) return <Spinner />
-  if (!diag) return (
-    <div className="card text-center py-10">
-      <p className="text-ink-secondary mb-4">{t('diag.empty')}</p>
-      <button className="btn-primary" onClick={() => createDiag.mutate()}>{t('diag.new')}</button>
-    </div>
-  )
+
+  if (!diag) {
+    return (
+      <div>
+        <SectorTemplates companyId={companyId} sector={sector} />
+        <div className="flex items-center gap-3 mb-4">
+          <h3 className="font-semibold">{t('diag.interviews')}</h3>
+          <button className="btn-primary btn-sm ms-auto" onClick={() => setShowForm(!showForm)}>
+            {t('diag.new')}</button>
+        </div>
+
+        {showForm && (
+          <div className="card mb-4">
+            <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
+              <div><label className="flabel">{t('diag.service')}</label>
+                <input className="input" value={form.service}
+                       onChange={(e) => setForm({ ...form, service: e.target.value })} /></div>
+              <div><label className="flabel">{t('diag.respondent')}</label>
+                <input className="input" value={form.respondent_name}
+                       onChange={(e) => setForm({ ...form, respondent_name: e.target.value })} /></div>
+              <div><label className="flabel">{t('diag.role')}</label>
+                <input className="input" value={form.respondent_role}
+                       onChange={(e) => setForm({ ...form, respondent_role: e.target.value })} /></div>
+              <div><label className="flabel">{t('diag.relatedProcessing')}</label>
+                <select className="input" value={form.processing}
+                        onChange={(e) => setForm({ ...form, processing: e.target.value })}>
+                  <option value="">—</option>
+                  {(procs ?? []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select></div>
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button className="btn-primary btn-sm" disabled={createDiag.isPending}
+                      onClick={() => createDiag.mutate(form)}>{t('missions.save')}</button>
+              <button className="btn-ghost btn-sm" onClick={() => { setShowForm(false); setForm(emptyForm) }}>
+                {t('missions.cancel')}</button>
+            </div>
+          </div>
+        )}
+
+        {!diags.length && !showForm && (
+          <div className="card text-center py-10">
+            <p className="text-ink-secondary">{t('diag.empty')}</p>
+          </div>
+        )}
+
+        {!!diags.length && (
+          <div className="card p-0 overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse">
+              <thead><tr>
+                <th className="th">{t('diag.service')}</th><th className="th">{t('diag.respondent')}</th>
+                <th className="th">{t('diag.relatedProcessing')}</th><th className="th">{t('proc.status')}</th>
+                <th className="th"></th>
+              </tr></thead>
+              <tbody>
+                {diags.map((d) => (
+                  <tr key={d.id} className="hover:bg-primary-50">
+                    <td className="td">{d.service || '—'}</td>
+                    <td className="td">{d.respondent_name || '—'}</td>
+                    <td className="td">{d.processing_name || '—'}</td>
+                    <td className="td"><StatusBadge status={d.status} /></td>
+                    <td className="td">
+                      <button className="btn-ghost btn-sm" onClick={() => setSelectedId(d.id)}>
+                        {t('diaglist.open')}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-2xl">
+      <div className="flex items-center gap-3 mb-4">
+        <button className="btn-ghost btn-sm" onClick={() => setSelectedId(null)}>← {t('diag.interviews')}</button>
+        <div className="text-sm text-ink-secondary">
+          {[diag.service, diag.respondent_name, diag.processing_name].filter(Boolean).join(' · ')}
+        </div>
+      </div>
       {effects && (
         <div className="card mb-4 py-3 text-sm"
              style={{ borderColor: 'var(--status-averifier)', background: 'var(--status-averifier-bg)' }}>
@@ -151,27 +270,65 @@ function DiagnosticTab({ companyId }) {
         </div>
       )}
       {(questions ?? []).map((q) => (
-        <div key={q.code} className="card mb-3">
-          <div className="flex gap-3 items-start">
-            <span className="data text-xs text-ink-muted pt-1">{q.code}</span>
-            <p className="font-semibold text-sm flex-1">{lang === 'ar' && q.text_ar ? q.text_ar : q.text_fr}</p>
-          </div>
-          <div className="flex gap-2 mt-3">
-            {['oui', 'non'].map((v) => (
-              <button key={v}
-                className={q.answer === v ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
-                onClick={() => answer.mutate({ code: q.code, value: v })}>
-                {v === 'oui' ? t('diag.yes') : t('diag.no')}
-              </button>
-            ))}
-          </div>
-        </div>
+        <QuestionCard key={q.code} q={q} lang={lang} t={t} answer={answer}
+                      dismissedKnown={dismissedKnown} setDismissedKnown={setDismissedKnown} />
       ))}
     </div>
   )
 }
 
-function ProcessingsTab({ companyId }) {
+function QuestionCard({ q, lang, t, answer, dismissedKnown, setDismissedKnown }) {
+  const [comment, setComment] = useState('')
+  const dismissed = dismissedKnown[q.code]
+  const submit = (value, extra = {}) => answer.mutate({ code: q.code, value, comment, ...extra })
+  return (
+    <div className="card mb-3">
+      <div className="flex gap-3 items-start">
+        <span className="data text-xs text-ink-muted pt-1">{q.code}</span>
+        <p className="font-semibold text-sm flex-1">{lang === 'ar' && q.text_ar ? q.text_ar : q.text_fr}</p>
+      </div>
+      {(q.rationale_fr || q.rationale_ar) && (
+        <p className="text-xs text-ink-muted mt-1" style={{ marginInlineStart: 44 }}>
+          {t('diag.why')} {lang === 'ar' && q.rationale_ar ? q.rationale_ar : q.rationale_fr}
+        </p>
+      )}
+      {q.known && !q.answer && !dismissed && (
+        <div className="mt-2 rounded-lg py-2 px-3 text-xs" style={{ marginInlineStart: 44,
+             background: 'var(--status-averifier-bg)', color: 'var(--status-averifier)' }}>
+          <div className="mb-1"><b>{t('diag.known')}</b> {q.known.value}</div>
+          <div className="flex gap-2">
+            <button className="btn-primary btn-sm py-1" onClick={() => submit(q.known.value)}>
+              {t('diag.use')}</button>
+            <button className="btn-ghost btn-sm py-1"
+                    onClick={() => setDismissedKnown((s) => ({ ...s, [q.code]: true }))}>
+              {t('diag.editKnown')}</button>
+          </div>
+        </div>
+      )}
+      <div className="flex gap-2 mt-3">
+        {['oui', 'non'].map((v) => (
+          <button key={v}
+            className={q.answer === v ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+            onClick={() => submit(v)}>
+            {v === 'oui' ? t('diag.yes') : t('diag.no')}
+          </button>
+        ))}
+      </div>
+      {q.answer && (
+        <div className="grid gap-2 mt-3" style={{ gridTemplateColumns: '1fr 1fr auto' }}>
+          <input className="input py-1 text-xs" placeholder={t('diag.comment')} value={comment}
+                 onChange={(e) => setComment(e.target.value)} />
+          <input type="file" className="text-xs"
+                 onChange={(e) => e.target.files[0] && submit(q.answer, { evidence: e.target.files[0] })} />
+          <button className="btn-secondary btn-sm py-1" onClick={() => submit(q.answer)}>
+            {t('missions.save')}</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProcessingsTab({ companyId, sector }) {
   const { t } = useApp()
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['processings', companyId],
@@ -182,30 +339,33 @@ function ProcessingsTab({ companyId }) {
   })
   if (!data) return <Spinner />
   return (
-    <div className="card p-0 overflow-x-auto">
-      <div className="flex items-center p-3">
-        <button className="btn-primary btn-sm ms-auto" onClick={() => create.mutate()}>{t('proc.add')}</button>
+    <div>
+      <SectorTemplates companyId={companyId} sector={sector} />
+      <div className="card p-0 overflow-x-auto">
+        <div className="flex items-center p-3">
+          <button className="btn-primary btn-sm ms-auto" onClick={() => create.mutate()}>{t('proc.add')}</button>
+        </div>
+        <table className="w-full min-w-[620px] border-collapse">
+          <thead><tr>
+            <th className="th">{t('proc.reference')}</th><th className="th">{t('proc.name')}</th>
+            <th className="th">{t('proc.owner')}</th><th className="th">{t('proc.status')}</th>
+            <th className="th">{t('proc.conformity')}</th>
+          </tr></thead>
+          <tbody>
+            {data.map((p) => (
+              <tr key={p.id} className="hover:bg-primary-50">
+                <td className="td data">{p.reference}</td>
+                <td className="td"><Link className="font-semibold"
+                  to={`/companies/${companyId}/processings/${p.id}`}>{p.name}</Link>
+                  <div className="text-xs text-ink-muted truncate max-w-[280px]">{p.purpose}</div></td>
+                <td className="td">{p.owner_name || '—'}</td>
+                <td className="td"><StatusBadge status={p.status} /></td>
+                <td className="td data">{p.conformity != null ? `${p.conformity} %` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      <table className="w-full min-w-[620px] border-collapse">
-        <thead><tr>
-          <th className="th">{t('proc.reference')}</th><th className="th">{t('proc.name')}</th>
-          <th className="th">{t('proc.owner')}</th><th className="th">{t('proc.status')}</th>
-          <th className="th">{t('proc.conformity')}</th>
-        </tr></thead>
-        <tbody>
-          {data.map((p) => (
-            <tr key={p.id} className="hover:bg-primary-50">
-              <td className="td data">{p.reference}</td>
-              <td className="td"><Link className="font-semibold"
-                to={`/companies/${companyId}/processings/${p.id}`}>{p.name}</Link>
-                <div className="text-xs text-ink-muted truncate max-w-[280px]">{p.purpose}</div></td>
-              <td className="td">{p.owner_name || '—'}</td>
-              <td className="td"><StatusBadge status={p.status} /></td>
-              <td className="td data">{p.conformity != null ? `${p.conformity} %` : '—'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }

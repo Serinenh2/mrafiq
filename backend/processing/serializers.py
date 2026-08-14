@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (PersonalDataCategory, DataSubjectCategory, SecurityMeasure,
-                     Processor, ProcessingActivity)
+                     Processor, ProcessingActivity, ProcessingTemplate)
 
 class RefSerializer(serializers.ModelSerializer):
     class Meta: fields = ['id','code','label_fr','label_ar']
@@ -10,6 +10,9 @@ class SubjectCatSerializer(RefSerializer):
     class Meta(RefSerializer.Meta): model = DataSubjectCategory
 class SecuritySerializer(RefSerializer):
     class Meta(RefSerializer.Meta): model = SecurityMeasure
+
+class ProcessingTemplateSerializer(serializers.ModelSerializer):
+    class Meta: model = ProcessingTemplate; fields = '__all__'
 
 class ProcessorSerializer(serializers.ModelSerializer):
     class Meta: model = Processor; fields = '__all__'

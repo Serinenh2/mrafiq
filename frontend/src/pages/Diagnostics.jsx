@@ -16,6 +16,8 @@ export default function Diagnostics() {
         <table className="w-full min-w-[560px] border-collapse">
           <thead><tr>
             <th className="th">{t('registre.company')}</th>
+            <th className="th">{t('diag.service')}</th>
+            <th className="th">{t('diag.respondent')}</th>
             <th className="th">{t('diaglist.started')}</th>
             <th className="th">{t('diaglist.answers')}</th>
             <th className="th">{t('proc.status')}</th>
@@ -25,6 +27,8 @@ export default function Diagnostics() {
             {data.map((d) => (
               <tr key={d.id} className="hover:bg-primary-50">
                 <td className="td font-semibold">{d.company_name}</td>
+                <td className="td">{d.service || '—'}</td>
+                <td className="td">{d.respondent_name || '—'}</td>
                 <td className="td data text-sm">{d.created_at?.slice(0, 10)}</td>
                 <td className="td data">{d.answers?.length ?? 0}</td>
                 <td className="td"><StatusBadge status={d.status} /></td>
@@ -34,7 +38,7 @@ export default function Diagnostics() {
                 </td>
               </tr>
             ))}
-            {!data.length && <tr><td className="td text-ink-muted" colSpan={5}>{t('common.empty')}</td></tr>}
+            {!data.length && <tr><td className="td text-ink-muted" colSpan={7}>{t('common.empty')}</td></tr>}
           </tbody>
         </table>
       </div>

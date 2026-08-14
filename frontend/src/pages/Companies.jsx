@@ -4,17 +4,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/client'
 import { useApp } from '../context/AppContext'
 import { Spinner } from '../components/ui'
+import CompanyForm, { EMPTY_COMPANY } from '../components/CompanyForm'
 
 export default function Companies() {
   const { t } = useApp()
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ name: '', legal_form: '', sector: '', wilaya: '16', employees_count: 0 })
+  const [form, setForm] = useState(EMPTY_COMPANY)
   const { data, isLoading } = useQuery({ queryKey: ['companies'],
     queryFn: () => api.get('/companies/').then((r) => r.data.results ?? r.data) })
   const create = useMutation({
     mutationFn: (body) => api.post('/companies/', body),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['companies'] }); setShowForm(false) },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['companies'] }); setShowForm(false); setForm(EMPTY_COMPANY) },
   })
 
   if (isLoading) return <Spinner />
@@ -28,24 +29,12 @@ export default function Companies() {
 
       {showForm && (
         <div className="card mb-4">
-          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
-            <div><label className="flabel">{t('companies.name')} *</label>
-              <input className="input" value={form.name}
-                     onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-            <div><label className="flabel">{t('companies.legalForm')}</label>
-              <input className="input" value={form.legal_form}
-                     onChange={(e) => setForm({ ...form, legal_form: e.target.value })} /></div>
-            <div><label className="flabel">{t('companies.sector')}</label>
-              <input className="input" value={form.sector}
-                     onChange={(e) => setForm({ ...form, sector: e.target.value })} /></div>
-            <div><label className="flabel">{t('companies.employees')}</label>
-              <input className="input" type="number" value={form.employees_count}
-                     onChange={(e) => setForm({ ...form, employees_count: e.target.value })} /></div>
-          </div>
+          <CompanyForm form={form} onChange={setForm} />
           <div className="flex gap-2 mt-4">
             <button className="btn-primary btn-sm" disabled={!form.name || create.isPending}
                     onClick={() => create.mutate(form)}>{t('companies.save')}</button>
-            <button className="btn-ghost btn-sm" onClick={() => setShowForm(false)}>{t('companies.cancel')}</button>
+            <button className="btn-ghost btn-sm" onClick={() => { setShowForm(false); setForm(EMPTY_COMPANY) }}>
+              {t('companies.cancel')}</button>
           </div>
         </div>
       )}

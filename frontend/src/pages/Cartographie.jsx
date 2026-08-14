@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import api from '../api/client'
 import { useApp } from '../context/AppContext'
 import { Spinner } from '../components/ui'
+import SectorTemplates from '../components/SectorTemplates'
 
 const ROW = 64, PAD = 40, COLW = 240, GAP = 120
 const X_LEFT = PAD, X_MID = PAD + COLW + GAP, X_RIGHT = PAD + 2 * (COLW + GAP)
@@ -22,6 +23,7 @@ export default function Cartographie() {
     queryFn: () => api.get(`/processors/?company=${cid}`).then((r) => r.data.results ?? r.data) })
 
   if (!companies || !refs) return <Spinner />
+  const company = companies.find((c) => c.id === cid)
   const list = (procs ?? []).filter((p) => !['propose', 'rejete'].includes(p.status))
 
   const subjectIds = [...new Set(list.flatMap((p) => p.subject_categories))]
@@ -66,6 +68,7 @@ export default function Cartographie() {
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </div>
+      <SectorTemplates companyId={cid} sector={company?.sector} />
       <div className="card overflow-x-auto">
         {!procs ? <Spinner /> : (
           <svg width={W} height={H + 28} viewBox={`0 0 ${W} ${H + 28}`} style={{ direction: 'ltr' }}
