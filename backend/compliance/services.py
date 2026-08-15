@@ -36,6 +36,56 @@ def run_engine(company, user=None):
             g.is_open = False; g.save(update_fields=['is_open'])
     return {'assessments_created': created_assessments, 'gaps_created': created_gaps}
 
+def validation_report(company):
+    """Contrôle avant validation (§22) : complétude, incohérences, documents manquants."""
+    from documents.models import DocumentTemplate, GeneratedDocument
+
+    missing_profile = []
+    for field, label in [('nif', 'NIF'), ('rc_number', 'Registre de commerce'),
+                          ('address', 'Adresse'), ('wilaya', 'Wilaya'),
+                          ('contact_name', 'Contact'), ('controller_name', 'Responsable des traitements')]:
+        if not getattr(company, field):
+            missing_profile.append(label)
+
+    processings = company.processings.exclude(status__in=['propose', 'rejete'])
+    incomplete_processings = [
+        {'id': p.id, 'reference': p.reference, 'name': p.name}
+        for p in processings if not p.purpose or not p.retention_duration
+    ]
+    to_verify_processings = processings.filter(status__in=['brouillon', 'a_verifier']).count()
+
+    security_total = company.security_checklist.count()
+    security_todo = company.security_checklist.filter(in_place__isnull=True).count()
+    rights_todo = company.rights_procedures.filter(niveau='a_verifier').count()
+
+    open_gaps = company.gaps.filter(is_open=True).count()
+    critical_gaps = company.gaps.filter(is_open=True, severity='critique').count()
+
+    validated_codes = set(GeneratedDocument.objects.filter(
+        company=company, status='valide').values_list('template__code', flat=True))
+    missing_documents = [
+        {'code': t.code, 'title_fr': t.title_fr, 'title_ar': t.title_ar}
+        for t in DocumentTemplate.objects.all() if t.code not in validated_codes
+    ]
+
+    dpo_alert = company.dpo_status if company.dpo_status != 'designe' else None
+    blocking = bool(missing_profile) or processings.count() == 0
+    ready = not blocking and not incomplete_processings and open_gaps == 0
+
+    return {
+        'missing_profile': missing_profile,
+        'processings_count': processings.count(),
+        'incomplete_processings': incomplete_processings,
+        'to_verify_processings': to_verify_processings,
+        'security_total': security_total, 'security_todo': security_todo,
+        'rights_todo': rights_todo,
+        'open_gaps': open_gaps, 'critical_gaps': critical_gaps,
+        'missing_documents': missing_documents,
+        'dpo_alert': dpo_alert,
+        'blocking': blocking,
+        'ready': ready,
+    }
+
 def score_level(score):
     levels = SystemSetting.get('score_levels', DEFAULT_SCORE_LEVELS)
     for lv in levels:

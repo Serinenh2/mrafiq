@@ -34,7 +34,8 @@ export default function CompanyDetail() {
   })
 
   if (!company) return <Spinner />
-  const TABS = ['info', 'organigramme', 'diagnostic', 'processings', 'securite', 'droits', 'gaps', 'actions']
+  const TABS = ['info', 'organigramme', 'diagnostic', 'processings', 'securite', 'droits',
+    'declaration', 'gaps', 'actions']
 
   return (
     <div>
@@ -70,6 +71,7 @@ export default function CompanyDetail() {
       {tab === 'processings' && <ProcessingsTab companyId={id} sector={company.sector} />}
       {tab === 'securite' && <SecuriteTab companyId={id} />}
       {tab === 'droits' && <DroitsTab companyId={id} />}
+      {tab === 'declaration' && <DeclarationTab companyId={id} />}
       {tab === 'gaps' && <GapsTab companyId={id} />}
       {tab === 'actions' && <ActionsTab companyId={id} />}
     </div>
@@ -378,6 +380,87 @@ function DroitsTab({ companyId }) {
       {sorted.map((it) => (
         <RightCard key={it.id} item={it} t={t} onSave={(body) => update.mutate({ id: it.id, body })} />
       ))}
+    </div>
+  )
+}
+
+function DeclarationSection({ title, children }) {
+  return (
+    <div className="card mb-3">
+      <h3 className="font-semibold text-sm mb-2">{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function DeclarationTab({ companyId }) {
+  const { t, L } = useApp()
+  const { data: report } = useQuery({ queryKey: ['validation-check', companyId],
+    queryFn: () => api.get(`/companies/${companyId}/validation-check/`).then((r) => r.data) })
+
+  if (!report) return <Spinner />
+
+  return (
+    <div className="max-w-2xl">
+      <div className="card mb-4 py-3 text-sm" style={report.ready
+        ? { background: 'var(--status-conforme-bg)', color: 'var(--status-conforme)' }
+        : { background: 'var(--status-averifier-bg)', color: 'var(--status-averifier)' }}>
+        {report.ready ? t('declaration.ready') : t('declaration.notReady')}
+      </div>
+
+      {report.missing_profile.length > 0 && (
+        <DeclarationSection title={t('declaration.missingProfile')}>
+          <ul className="list-disc ps-5 text-sm">
+            {report.missing_profile.map((f) => <li key={f}>{f}</li>)}
+          </ul>
+        </DeclarationSection>
+      )}
+
+      <DeclarationSection title={t('declaration.processings')}>
+        <p className="text-sm">{t('declaration.processingsCount')} : <b>{report.processings_count}</b>
+          {' · '}{t('declaration.toVerify')} : <b>{report.to_verify_processings}</b></p>
+        {report.incomplete_processings.length > 0 && (
+          <ul className="list-disc ps-5 text-sm mt-2">
+            {report.incomplete_processings.map((p) => (
+              <li key={p.id}>
+                <Link className="underline" to={`/companies/${companyId}/processings/${p.id}`}>
+                  {p.reference} · {p.name}</Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DeclarationSection>
+
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
+        <DeclarationSection title={t('declaration.security')}>
+          <p className="text-sm">{report.security_total - report.security_todo} / {report.security_total}</p>
+        </DeclarationSection>
+        <DeclarationSection title={t('declaration.rights')}>
+          <p className="text-sm">{4 - report.rights_todo} / 4</p>
+        </DeclarationSection>
+        <DeclarationSection title={t('declaration.gaps')}>
+          <p className="text-sm">{report.open_gaps} ({report.critical_gaps} {t('declaration.critical')})</p>
+        </DeclarationSection>
+        {report.dpo_alert && (
+          <DeclarationSection title={t('declaration.dpo')}>
+            <p className="text-sm">{t(`declaration.dpoAlert.${report.dpo_alert}`)}</p>
+          </DeclarationSection>
+        )}
+      </div>
+
+      {report.missing_documents.length > 0 && (
+        <DeclarationSection title={t('declaration.missingDocuments')}>
+          <ul className="list-disc ps-5 text-sm">
+            {report.missing_documents.map((d) => <li key={d.code}>{L(d, 'title_fr', 'title_ar')}</li>)}
+          </ul>
+        </DeclarationSection>
+      )}
+
+      <button className="btn-primary btn-sm mt-2" disabled={report.blocking}
+              onClick={() => dl(`/companies/${companyId}/export/declaration.pdf`, `declaration_${companyId}.pdf`)}>
+        {t('declaration.generate')}
+      </button>
+      {report.blocking && <p className="text-xs text-ink-muted mt-2">{t('declaration.blockingHint')}</p>}
     </div>
   )
 }

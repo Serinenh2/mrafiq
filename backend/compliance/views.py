@@ -10,7 +10,7 @@ from processing.models import ProcessingActivity
 from .models import Domain, LegalReference, Requirement, Assessment, Gap, Action
 from .serializers import (DomainSerializer, LegalReferenceSerializer, RequirementSerializer,
                           AssessmentSerializer, GapSerializer, ActionSerializer)
-from .services import run_engine, company_score
+from .services import run_engine, company_score, validation_report
 from . import exports
 
 class DomainViewSet(AuditModelViewSet):
@@ -82,6 +82,19 @@ class ReportPdfView(APIView):
     permission_classes = [IsConsultantOrAdmin]
     def get(self, request, company_id):
         return exports.diagnostic_pdf(Company.objects.get(pk=company_id))
+
+class ValidationCheckView(APIView):
+    """Contrôle avant validation (§22)."""
+    def get(self, request, company_id):
+        company = Company.objects.get(pk=company_id)
+        if request.user.role == 'company' and request.user.company_id != company.pk:
+            return Response(status=403)
+        return Response(validation_report(company))
+
+class DeclarationPdfView(APIView):
+    permission_classes = [IsConsultantOrAdmin]
+    def get(self, request, company_id):
+        return exports.declaration_pdf(Company.objects.get(pk=company_id))
 
 class DashboardView(APIView):
     """KPIs consultant (§7)."""
