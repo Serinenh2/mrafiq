@@ -3,11 +3,79 @@ import io
 from datetime import date
 from django.http import HttpResponse
 from reportlab.lib import colors
+from reportlab.lib.enums import TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-from compliance.exports import INK, PRIMARY, BRASS, build_pdf
+from compliance.exports import INK, PRIMARY, BRASS, build_pdf, ensure_arabic_fonts, ar_text
+
+TEMPLATE_FIELDS_FR = ["Domaine d'activité", 'Nom du traitement', 'Finalité du traitement',
+    'Catégorie de traitement', 'Personnes concernées',
+    'Données collectées et traitées', 'Durée de conservation des données']
+TEMPLATE_FIELDS_AR = ['مجال النشاط', 'تسمية المعالجة', 'الغاية من المعالجة',
+    'أصناف المعالجة', 'أصناف الأشخاص المعنيين بالمعالجة',
+    'أصناف المعطيات المجمعة والمعالجة', 'مدة حفظ المعطيات']
+
+def processing_template_pdf(tpl, company, lang='fr'):
+    """Fiche d'un traitement type du secteur (référentiel), à l'en-tête de l'entreprise (FR/AR)."""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18*mm, bottomMargin=18*mm)
+    ss = getSampleStyleSheet()
+
+    values = [
+        tpl.domain_fr, tpl.name_fr, tpl.purpose_fr, tpl.category_fr,
+        tpl.subject_categories_fr, tpl.data_categories_fr, tpl.retention_fr,
+    ] if lang != 'ar' else [
+        tpl.domain_ar or tpl.domain_fr, tpl.name_ar or tpl.name_fr,
+        tpl.purpose_ar or tpl.purpose_fr, tpl.category_ar or tpl.category_fr,
+        tpl.subject_categories_ar or tpl.subject_categories_fr,
+        tpl.data_categories_ar or tpl.data_categories_fr,
+        tpl.retention_ar or tpl.retention_fr,
+    ]
+
+    if lang == 'ar':
+        ensure_arabic_fonts()
+        h1 = ParagraphStyle('h1ar', fontName='ArabicUI-Bold', fontSize=16, textColor=INK,
+                            alignment=TA_RIGHT, leading=22, spaceAfter=8)
+        sub = ParagraphStyle('subar', fontName='ArabicUI', fontSize=9, textColor=BRASS,
+                             alignment=TA_RIGHT, spaceAfter=14)
+        cell = ParagraphStyle('cellar', fontName='ArabicUI', fontSize=9.5, alignment=TA_RIGHT, leading=14)
+        label_cell = ParagraphStyle('labelar', parent=cell, fontName='ArabicUI-Bold')
+        name = tpl.name_ar or tpl.name_fr
+        domain = tpl.domain_ar or tpl.domain_fr
+        story = [
+            Paragraph(ar_text(f'مرافق — معالجة نموذجية : {name}'), h1),
+            Paragraph(ar_text(f'{company.name} · {domain} · {date.today().strftime("%d/%m/%Y")}'), sub),
+            HRFlowable(width='100%', color=BRASS, thickness=2), Spacer(1, 10),
+        ]
+        rows = [[Paragraph(ar_text(v or '—'), cell), Paragraph(ar_text(l), label_cell)]
+                for l, v in zip(TEMPLATE_FIELDS_AR, values)]
+        t = Table(rows, colWidths=[120*mm, 55*mm])
+    else:
+        h1 = ParagraphStyle('h1', parent=ss['Title'], textColor=INK, fontSize=18, spaceAfter=2)
+        sub = ParagraphStyle('sub', parent=ss['Normal'], textColor=BRASS, fontSize=9, spaceAfter=14)
+        name, domain = tpl.name_fr, tpl.domain_fr
+        story = [
+            Paragraph(f'MRAFIQ — Traitement type : {name}', h1),
+            Paragraph(f'{company.name} · {domain} · {date.today().strftime("%d/%m/%Y")}', sub),
+            HRFlowable(width='100%', color=BRASS, thickness=2), Spacer(1, 10),
+        ]
+        rows = [[l, v or '—'] for l, v in zip(TEMPLATE_FIELDS_FR, values)]
+        t = Table(rows, colWidths=[55*mm, 120*mm])
+
+    t.setStyle(TableStyle([
+        ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), .4, colors.HexColor('#C6D1E0')),
+        ('BACKGROUND', (0,0) if lang != 'ar' else (1,0), (0,-1) if lang != 'ar' else (1,-1),
+         colors.HexColor('#F5F7FB')),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 5), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
+    story.append(t)
+    build_pdf(doc, story, company)
+    buf.seek(0)
+    resp = HttpResponse(buf.read(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'attachment; filename="traitement_type_{tpl.pk}.pdf"'
+    return resp
 
 def processing_pdf(p):
     buf = io.BytesIO()

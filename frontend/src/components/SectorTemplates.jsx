@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '../api/client'
+import api, { downloadFile as dl } from '../api/client'
 import { useApp } from '../context/AppContext'
+import DocumentPreviewModal from './DocumentPreviewModal'
 
 const norm = (s) => (s || '').trim().toLowerCase()
 
@@ -20,10 +21,16 @@ export default function SectorTemplates({ companyId, sector }) {
   const { t, lang } = useApp()
   const qc = useQueryClient()
   const [addedIds, setAddedIds] = useState({})
+  const [previewing, setPreviewing] = useState(null) // { id, title }
   const { data: templates } = useQuery({ queryKey: ['processing-templates'],
     queryFn: () => api.get('/processing-templates/').then((r) => r.data) })
   const { data: existing } = useQuery({ queryKey: ['processings', companyId], enabled: !!companyId,
     queryFn: () => api.get(`/processings/?company=${companyId}`).then((r) => r.data) })
+  const { data: company } = useQuery({ queryKey: ['company', String(companyId)], enabled: !!companyId,
+    queryFn: () => api.get(`/companies/${companyId}/`).then((r) => r.data) })
+  const { data: previewData, isFetching: previewLoading } = useQuery({
+    queryKey: ['sector-tpl-preview', previewing?.id, lang], enabled: !!previewing,
+    queryFn: () => api.get(`/processing-templates/${previewing.id}/preview/?lang=${lang}`).then((r) => r.data) })
 
   const create = useMutation({
     mutationFn: (body) => api.post('/processings/', body),
@@ -62,13 +69,30 @@ export default function SectorTemplates({ companyId, sector }) {
             <div className="text-xs text-ink-muted mt-1">
               {lang === 'ar' && tpl.retention_ar ? tpl.retention_ar : tpl.retention_fr}
             </div>
-            <button className="btn-secondary btn-sm mt-2" disabled={addedIds[tpl.id]}
-                    onClick={() => addOne(tpl)}>
-              {addedIds[tpl.id] ? t('sectorTpl.added') : t('sectorTpl.add')}
-            </button>
+            <div className="flex gap-2 mt-2">
+              <button className="btn-secondary btn-sm" disabled={addedIds[tpl.id]}
+                      onClick={() => addOne(tpl)}>
+                {addedIds[tpl.id] ? t('sectorTpl.added') : t('sectorTpl.add')}
+              </button>
+              <button className="btn-ghost btn-sm"
+                      onClick={() => setPreviewing({ id: tpl.id,
+                        title: lang === 'ar' && tpl.name_ar ? tpl.name_ar : tpl.name_fr })}>
+                {t('docValide.preview')}
+              </button>
+              <button className="btn-ghost btn-sm" disabled={!companyId}
+                      onClick={() => dl(`/processing-templates/${tpl.id}/export/fiche.pdf/?company=${companyId}&lang=${lang}`,
+                        `traitement_type_${tpl.id}.pdf`)}>
+                {t('docValide.download')}
+              </button>
+            </div>
           </div>
         ))}
       </div>
+
+      {previewing && (
+        <DocumentPreviewModal title={previewing.title} preview={previewData} loading={previewLoading}
+                              company={company} onClose={() => setPreviewing(null)} />
+      )}
     </div>
   )
 }

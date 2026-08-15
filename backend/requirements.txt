@@ -10,6 +10,8 @@ reportlab==4.2.0
 openpyxl==3.1.2
 python-docx==1.2.0
 pypdf==6.16.1
+arabic-reshaper==3.0.1
+python-bidi==0.6.11
 cryptography==50.0.0
 Pillow==12.3.0
 python-dotenv==1.0.1

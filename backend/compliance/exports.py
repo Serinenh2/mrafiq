@@ -1,7 +1,10 @@
 """Exports : registre Excel (§14/§39) et rapport de diagnostic PDF (§23)."""
 import io
 import os
+from pathlib import Path
 from datetime import date
+import arabic_reshaper
+from bidi.algorithm import get_display
 from django.http import HttpResponse
 from openpyxl import Workbook
 from openpyxl.drawing.image import Image as XlsxImage
@@ -12,12 +15,32 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
                                 TableStyle, HRFlowable)
 from .services import company_score, validation_report
 
 INK = colors.HexColor('#0B2545'); PRIMARY = colors.HexColor('#1B5CB4')
 BRASS = colors.HexColor('#B08A3C')
+
+_FONTS_DIR = Path(__file__).resolve().parent.parent / 'mrafiq' / 'fonts'
+_arabic_fonts_ready = False
+
+def ensure_arabic_fonts():
+    """Enregistre la police IBM Plex Sans Arabic (même famille que l'interface) pour reportlab."""
+    global _arabic_fonts_ready
+    if _arabic_fonts_ready:
+        return
+    pdfmetrics.registerFont(TTFont('ArabicUI', str(_FONTS_DIR / 'IBMPlexSansArabic-Regular.ttf')))
+    pdfmetrics.registerFont(TTFont('ArabicUI-Bold', str(_FONTS_DIR / 'IBMPlexSansArabic-Bold.ttf')))
+    _arabic_fonts_ready = True
+
+def ar_text(text):
+    """Prépare un texte arabe pour reportlab : liaison des lettres puis ordre visuel RTL."""
+    if not text:
+        return text
+    return get_display(arabic_reshaper.reshape(text))
 
 def _logo_path(company):
     logo = getattr(company, 'logo', None) if company else None

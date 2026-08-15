@@ -1,3 +1,4 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -5,12 +6,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from accounts.permissions import IsConsultantOrAdmin, scope_to_company
 from audit.utils import AuditModelViewSet, _snap, log
+from companies.models import Company
 from .models import (PersonalDataCategory, DataSubjectCategory, SecurityMeasure,
                      Processor, ProcessingActivity, ProcessingDataItem, ProcessingTemplate)
 from .serializers import (DataCatSerializer, SubjectCatSerializer, SecuritySerializer,
                           ProcessorSerializer, ProcessingSerializer, ProcessingDataItemSerializer,
                           ProcessingTemplateSerializer)
-from .exports import processing_pdf
+from .exports import processing_pdf, processing_template_pdf
 
 class RefsView(APIView):
     def get(self, request):
@@ -20,11 +22,42 @@ class RefsView(APIView):
             'security_measures': SecuritySerializer(SecurityMeasure.objects.all(), many=True).data,
         })
 
+TEMPLATE_FIELDS_FR = ["Domaine d'activité", 'Nom du traitement', 'Finalité du traitement',
+    'Catégorie de traitement', 'Personnes concernées',
+    'Données collectées et traitées', 'Durée de conservation des données']
+TEMPLATE_FIELDS_AR = ['مجال النشاط', 'تسمية المعالجة', 'الغاية من المعالجة',
+    'أصناف المعالجة', 'أصناف الأشخاص المعنيين بالمعالجة',
+    'أصناف المعطيات المجمعة والمعالجة', 'مدة حفظ المعطيات']
+
 class ProcessingTemplateViewSet(viewsets.ReadOnlyModelViewSet):
     """Catalogue de traitements types par secteur — référentiel partagé, lecture seule."""
     queryset = ProcessingTemplate.objects.all()
     serializer_class = ProcessingTemplateSerializer
     pagination_class = None
+
+    @action(detail=True, methods=['get'])
+    def preview(self, request, pk=None):
+        """Aperçu en lecture seule d'un traitement type (fiche formatée, FR/AR)."""
+        tpl = self.get_object()
+        ar = request.query_params.get('lang') == 'ar'
+        pick = lambda fr, ar_val: (ar_val if ar and ar_val else fr)
+        values = [
+            pick(tpl.domain_fr, tpl.domain_ar), pick(tpl.name_fr, tpl.name_ar),
+            pick(tpl.purpose_fr, tpl.purpose_ar), pick(tpl.category_fr, tpl.category_ar),
+            pick(tpl.subject_categories_fr, tpl.subject_categories_ar),
+            pick(tpl.data_categories_fr, tpl.data_categories_ar),
+            pick(tpl.retention_fr, tpl.retention_ar),
+        ]
+        labels = TEMPLATE_FIELDS_AR if ar else TEMPLATE_FIELDS_FR
+        blocks = [{'type': 'field', 'label': l, 'text': v or '—'} for l, v in zip(labels, values)]
+        return Response({'type': 'docx', 'blocks': blocks})
+
+    @action(detail=True, methods=['get'], url_path='export/fiche.pdf')
+    def export_fiche(self, request, pk=None):
+        tpl = self.get_object()
+        company = get_object_or_404(Company, pk=request.query_params.get('company'))
+        lang = request.query_params.get('lang', 'fr')
+        return processing_template_pdf(tpl, company, lang=lang)
 
 class ProcessorViewSet(AuditModelViewSet):
     serializer_class = ProcessorSerializer
