@@ -96,6 +96,18 @@ class DeclarationPdfView(APIView):
     def get(self, request, company_id):
         return exports.declaration_pdf(Company.objects.get(pk=company_id))
 
+class AssistantView(APIView):
+    """Assistant مرافق (§29-30/§48) — réponses déterministes, jamais générées librement."""
+    def get(self, request, company_id):
+        from . import assistant
+        company = Company.objects.get(pk=company_id)
+        if request.user.role == 'company' and request.user.company_id != company.pk:
+            return Response(status=403)
+        query = request.query_params.get('q')
+        if query not in assistant.QUERIES:
+            return Response({'error': 'unknown query'}, status=400)
+        return Response(assistant.answer(company, query))
+
 class DashboardView(APIView):
     """KPIs consultant (§7)."""
     def get(self, request):

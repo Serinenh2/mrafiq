@@ -16,6 +16,7 @@ import MissionDetail from './pages/MissionDetail'
 import Cartographie from './pages/Cartographie'
 import Reports from './pages/Reports'
 import DocumentsValides from './pages/DocumentsValides'
+import Assistant from './pages/Assistant'
 import { Spinner } from './components/ui'
 
 function Protected({ children }) {
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/cartographie" element={<Cartographie />} />
         <Route path="/actions" element={<Actions />} />
         <Route path="/documents-valides" element={<DocumentsValides />} />
+        <Route path="/assistant" element={<Assistant />} />
         <Route path="/rapports" element={<Reports />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
