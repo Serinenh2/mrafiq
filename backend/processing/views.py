@@ -1,8 +1,9 @@
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from accounts.permissions import IsConsultantOrAdmin, scope_to_company
-from audit.utils import AuditModelViewSet
+from audit.utils import AuditModelViewSet, _snap, log
 from .models import (PersonalDataCategory, DataSubjectCategory, SecurityMeasure,
                      Processor, ProcessingActivity, ProcessingTemplate)
 from .serializers import (DataCatSerializer, SubjectCatSerializer, SecuritySerializer,
@@ -47,3 +48,16 @@ class ProcessingViewSet(AuditModelViewSet):
         return qs
     def perform_create(self, serializer):
         self._audit_save(serializer, created_by=self.request.user)
+    def perform_update(self, serializer):
+        old = _snap(serializer.instance)
+        instance = serializer.save(version_minor=serializer.instance.version_minor + 1)
+        log(self.request.user, 'update', instance, old=old, request=self.request)
+
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None):
+        """Historique des versions (§31) — réutilise le journal d'audit existant."""
+        from audit.models import AuditLog
+        from audit.serializers import AuditLogSerializer
+        obj = self.get_object()  # applique le scope entreprise
+        logs = AuditLog.objects.filter(model='ProcessingActivity', object_id=str(obj.pk)).order_by('created_at')
+        return Response(AuditLogSerializer(logs, many=True).data)

@@ -7,6 +7,7 @@ class User(AbstractUser):
         CONSULTANT = 'consultant', 'Consultant'
         COMPANY = 'company', 'Entreprise'
         AUDITOR = 'auditor', 'Auditeur'
+        ORG_USER = 'org_user', 'Utilisateur organisation'
     role = models.CharField(max_length=16, choices=Role.choices, default=Role.CONSULTANT)
     company = models.ForeignKey('companies.Company', null=True, blank=True,
                                 on_delete=models.SET_NULL, related_name='users')

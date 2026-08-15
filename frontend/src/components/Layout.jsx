@@ -25,6 +25,7 @@ export default function Layout() {
   const { user, logout } = useAuth()
   const nav = useNavigate()
   const cls = ({ isActive }) => (isActive ? 'nav-active' : 'nav-item')
+  const isOrgUser = user?.role === 'org_user'
 
   return (
     <div className="min-h-screen md:grid" style={{ gridTemplateColumns: '236px 1fr' }}>
@@ -35,22 +36,32 @@ export default function Layout() {
           <span className="text-xs font-semibold tracking-[.28em]"
                 style={{ color: 'var(--brand-brass-300)' }}>MRAFIQ</span>
         </div>
-        <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pb-1.5"
-             style={{ color: '#5F7396' }}>{t('nav.pilotage')}</div>
-        <NavLink to="/" end className={cls}><Icon d={ICONS.dash} />{t('nav.dashboard')}</NavLink>
-        <NavLink to="/companies" className={cls}><Icon d={ICONS.companies} />{t('nav.companies')}</NavLink>
-        <NavLink to="/responsable-traitements" className={cls}><Icon d={ICONS.person} />{t('nav.responsable')}</NavLink>
-        <NavLink to="/dpo" className={cls}><Icon d={ICONS.person} />{t('nav.dpo')}</NavLink>
-        <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pt-4 pb-1.5"
-             style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
-        <NavLink to="/missions" className={cls}><Icon d={ICONS.missions} />{t('nav.missions')}</NavLink>
-        <NavLink to="/diagnostics" className={cls}><Icon d={ICONS.diagnostics} />{t('nav.diagnostics')}</NavLink>
-        <NavLink to="/registre" className={cls}><Icon d={ICONS.registre} />{t('nav.registre')}</NavLink>
-        <NavLink to="/cartographie" className={cls}><Icon d={ICONS.carto} />{t('nav.carto')}</NavLink>
-        <NavLink to="/actions" className={cls}><Icon d={ICONS.actions} />{t('nav.actions')}</NavLink>
-        <NavLink to="/documents-valides" className={cls}><Icon d={ICONS.docValide} />{t('nav.documentsValides')}</NavLink>
-        <NavLink to="/assistant" className={cls}><Icon d={ICONS.assistant} />{t('nav.assistant')}</NavLink>
-        <NavLink to="/rapports" className={cls}><Icon d={ICONS.reports} />{t('nav.reports')}</NavLink>
+        {isOrgUser ? (
+          <>
+            <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pb-1.5"
+                 style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
+            <NavLink to="/diagnostics" className={cls}><Icon d={ICONS.diagnostics} />{t('nav.diagnostics')}</NavLink>
+          </>
+        ) : (
+          <>
+            <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pb-1.5"
+                 style={{ color: '#5F7396' }}>{t('nav.pilotage')}</div>
+            <NavLink to="/" end className={cls}><Icon d={ICONS.dash} />{t('nav.dashboard')}</NavLink>
+            <NavLink to="/companies" className={cls}><Icon d={ICONS.companies} />{t('nav.companies')}</NavLink>
+            <NavLink to="/responsable-traitements" className={cls}><Icon d={ICONS.person} />{t('nav.responsable')}</NavLink>
+            <NavLink to="/dpo" className={cls}><Icon d={ICONS.person} />{t('nav.dpo')}</NavLink>
+            <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pt-4 pb-1.5"
+                 style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
+            <NavLink to="/missions" className={cls}><Icon d={ICONS.missions} />{t('nav.missions')}</NavLink>
+            <NavLink to="/diagnostics" className={cls}><Icon d={ICONS.diagnostics} />{t('nav.diagnostics')}</NavLink>
+            <NavLink to="/registre" className={cls}><Icon d={ICONS.registre} />{t('nav.registre')}</NavLink>
+            <NavLink to="/cartographie" className={cls}><Icon d={ICONS.carto} />{t('nav.carto')}</NavLink>
+            <NavLink to="/actions" className={cls}><Icon d={ICONS.actions} />{t('nav.actions')}</NavLink>
+            <NavLink to="/documents-valides" className={cls}><Icon d={ICONS.docValide} />{t('nav.documentsValides')}</NavLink>
+            <NavLink to="/assistant" className={cls}><Icon d={ICONS.assistant} />{t('nav.assistant')}</NavLink>
+            <NavLink to="/rapports" className={cls}><Icon d={ICONS.reports} />{t('nav.reports')}</NavLink>
+          </>
+        )}
         <div className="mt-auto pt-6 px-2 text-xs" style={{ color: '#8FA3C0' }}>
           {user?.first_name || user?.username} · {user?.role}
         </div>

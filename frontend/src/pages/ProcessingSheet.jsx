@@ -13,6 +13,70 @@ const FIELDS = [
 const STATUSES = ['propose','brouillon','renseigne','a_verifier','verifie','valide','rejete']
 const ASSESS = ['conforme','partiel','non_conforme','manquant','a_verifier']
 
+function VersionHistory({ pid }) {
+  const { t, lang } = useApp()
+  const [selected, setSelected] = useState([])
+  const { data: history } = useQuery({ queryKey: ['processing-history', pid],
+    queryFn: () => api.get(`/processings/${pid}/history/`).then((r) => r.data) })
+
+  if (!history) return null
+  const toggle = (i) => setSelected((s) => (s.includes(i) ? s.filter((x) => x !== i) : [...s, i].slice(-2)))
+  const sorted = [...selected].sort((x, y) => x - y)
+  const [a, b] = sorted.length === 2 ? sorted.map((i) => history[i]) : [null, null]
+  const diffKeys = a && b ? Object.keys(a.new_value || {}).filter((k) =>
+    String(a.new_value?.[k] ?? '') !== String(b.new_value?.[k] ?? '')) : []
+
+  return (
+    <div className="card mb-4">
+      <h3 className="font-semibold mb-3 text-sm">{t('proc.history')}</h3>
+      {!history.length ? (
+        <p className="text-sm text-ink-secondary">{t('proc.noHistory')}</p>
+      ) : (
+        <ul className="text-sm space-y-1">
+          {history.map((h, i) => {
+            const v = h.new_value?.version_major && h.new_value?.version_minor != null
+              ? `v${h.new_value.version_major}.${h.new_value.version_minor}` : `#${i + 1}`
+            return (
+              <li key={h.id} className="flex items-center gap-2">
+                <input type="checkbox" checked={selected.includes(i)} onChange={() => toggle(i)} />
+                <span className="data font-semibold">{v}</span>
+                <span className="text-ink-muted">
+                  {new Date(h.created_at).toLocaleString(lang === 'ar' ? 'ar' : 'fr')}</span>
+                <span className="text-ink-muted">— {h.username || '—'}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {sorted.length === 2 && (
+        <div className="mt-4">
+          <h4 className="text-xs font-semibold uppercase text-ink-muted mb-2">{t('proc.compare')}</h4>
+          {diffKeys.length ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs border-collapse min-w-[420px]">
+                <thead><tr>
+                  <th className="th">{t('proc.field')}</th>
+                  <th className="th">{t('proc.before')}</th>
+                  <th className="th">{t('proc.after')}</th>
+                </tr></thead>
+                <tbody>
+                  {diffKeys.map((k) => (
+                    <tr key={k}>
+                      <td className="td data">{k}</td>
+                      <td className="td">{a.new_value?.[k] || '—'}</td>
+                      <td className="td">{b.new_value?.[k] || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : <p className="text-sm text-ink-secondary">{t('proc.noDiff')}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ProcessingSheet() {
   const { id, pid } = useParams()
   const { t, L } = useApp()
@@ -61,6 +125,7 @@ export default function ProcessingSheet() {
           <h1 className="text-xl font-bold">{t('proc.title')} — {proc.name}</h1>
         </div>
         <div className="ms-auto flex items-center gap-3">
+          <span className="text-xs text-ink-muted data">{t('proc.version')} {proc.version}</span>
           <StatusBadge status={form.status} />
           <select className="input w-auto py-1 text-sm" value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}>
@@ -126,6 +191,8 @@ export default function ProcessingSheet() {
         {saved && <span className="text-sm font-semibold"
                         style={{ color: 'var(--status-conforme)' }}>{t('proc.saved')}</span>}
       </div>
+
+      <VersionHistory pid={pid} />
 
       <div className="card p-0 overflow-x-auto">
         <h3 className="font-semibold p-4 pb-2">{t('proc.assessments')}</h3>

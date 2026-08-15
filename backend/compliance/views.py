@@ -3,7 +3,7 @@ from django.utils import timezone
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from accounts.permissions import IsConsultantOrAdmin, scope_to_company
+from accounts.permissions import IsConsultantOrAdmin, BlockOrgUser, scope_to_company, is_scoped_to_own_company
 from audit.utils import AuditModelViewSet, log
 from companies.models import Company
 from processing.models import ProcessingActivity
@@ -50,6 +50,7 @@ class GapViewSet(AuditModelViewSet):
 
 class ActionViewSet(AuditModelViewSet):
     serializer_class = ActionSerializer; pagination_class = None
+    permission_classes = [BlockOrgUser]
     def get_queryset(self):
         qs = scope_to_company(Action.objects.select_related('processing'), self.request.user)
         company = self.request.query_params.get('company')
@@ -67,9 +68,10 @@ class ComplianceRunView(APIView):
         return Response(run_engine(company, request.user))
 
 class ScoreView(APIView):
+    permission_classes = [BlockOrgUser]
     def get(self, request, company_id):
         company = Company.objects.get(pk=company_id)
-        if request.user.role == 'company' and request.user.company_id != company.pk:
+        if is_scoped_to_own_company(request.user) and request.user.company_id != company.pk:
             return Response(status=403)
         return Response(company_score(company))
 
@@ -85,9 +87,10 @@ class ReportPdfView(APIView):
 
 class ValidationCheckView(APIView):
     """Contrôle avant validation (§22)."""
+    permission_classes = [BlockOrgUser]
     def get(self, request, company_id):
         company = Company.objects.get(pk=company_id)
-        if request.user.role == 'company' and request.user.company_id != company.pk:
+        if is_scoped_to_own_company(request.user) and request.user.company_id != company.pk:
             return Response(status=403)
         return Response(validation_report(company))
 
@@ -98,10 +101,11 @@ class DeclarationPdfView(APIView):
 
 class AssistantView(APIView):
     """Assistant مرافق (§29-30/§48) — réponses déterministes, jamais générées librement."""
+    permission_classes = [BlockOrgUser]
     def get(self, request, company_id):
         from . import assistant
         company = Company.objects.get(pk=company_id)
-        if request.user.role == 'company' and request.user.company_id != company.pk:
+        if is_scoped_to_own_company(request.user) and request.user.company_id != company.pk:
             return Response(status=403)
         query = request.query_params.get('q')
         if query not in assistant.QUERIES:
@@ -110,9 +114,10 @@ class AssistantView(APIView):
 
 class DashboardView(APIView):
     """KPIs consultant (§7)."""
+    permission_classes = [BlockOrgUser]
     def get(self, request):
         user = request.user
-        companies = Company.objects.all() if user.role != 'company' \
+        companies = Company.objects.all() if not is_scoped_to_own_company(user) \
             else Company.objects.filter(pk=user.company_id)
         procs = ProcessingActivity.objects.filter(company__in=companies)
         today = timezone.now().date()

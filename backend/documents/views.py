@@ -5,7 +5,7 @@ from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from accounts.permissions import IsConsultantOrAdmin, scope_to_company
+from accounts.permissions import IsConsultantOrAdmin, BlockOrgUser, scope_to_company
 from audit.utils import AuditModelViewSet, log
 from companies.models import Company
 from .models import DocumentTemplate, GeneratedDocument
@@ -42,6 +42,7 @@ class DocumentTemplateViewSet(viewsets.ReadOnlyModelViewSet):
 
 class GeneratedDocumentViewSet(AuditModelViewSet):
     serializer_class = GeneratedDocumentSerializer
+    permission_classes = [BlockOrgUser]
     def get_queryset(self):
         qs = scope_to_company(
             GeneratedDocument.objects.select_related('company', 'template'), self.request.user)

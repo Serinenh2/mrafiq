@@ -1,7 +1,7 @@
 from django.db.models import Count
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from accounts.permissions import IsConsultantOrAdmin, scope_to_company
+from accounts.permissions import IsConsultantOrAdmin, ReadAnyWriteConsultant, scope_to_company, is_scoped_to_own_company
 from audit.utils import AuditModelViewSet, log, _snap
 from .models import Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure
 from .serializers import (CompanySerializer, CompanySiteSerializer, DepartmentSerializer,
@@ -9,10 +9,10 @@ from .serializers import (CompanySerializer, CompanySiteSerializer, DepartmentSe
 
 class CompanyViewSet(AuditModelViewSet):
     serializer_class = CompanySerializer
-    permission_classes = [IsConsultantOrAdmin]
+    permission_classes = [ReadAnyWriteConsultant]
     def get_queryset(self):
         qs = Company.objects.annotate(processing_count=Count('processings'))
-        if self.request.user.role == 'company':
+        if is_scoped_to_own_company(self.request.user):
             return qs.filter(id=self.request.user.company_id)
         return qs
     def perform_create(self, serializer):

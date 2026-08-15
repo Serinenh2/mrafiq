@@ -27,12 +27,18 @@ function Protected({ children }) {
   return children
 }
 
+function Home() {
+  const { user } = useAuth()
+  // Le rôle "Utilisateur organisation" n'a accès qu'au questionnaire (§33).
+  return user?.role === 'org_user' ? <Navigate to="/diagnostics" replace /> : <Dashboard />
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route element={<Protected><Layout /></Protected>}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Home />} />
         <Route path="/companies" element={<Companies />} />
         <Route path="/companies/:id" element={<CompanyDetail />} />
         <Route path="/companies/:id/processings/:pid" element={<ProcessingSheet />} />

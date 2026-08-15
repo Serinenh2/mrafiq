@@ -1,7 +1,8 @@
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
-from accounts.permissions import IsConsultantOrAdmin, scope_to_company
+from accounts.permissions import IsConsultantOrAdmin, scope_to_company, is_scoped_to_own_company
 from audit.utils import AuditModelViewSet, log
 from .models import Question, Diagnostic, Answer
 from .serializers import QuestionSerializer, DiagnosticSerializer, AnswerSerializer
@@ -30,7 +31,11 @@ class DiagnosticViewSet(AuditModelViewSet):
             Diagnostic.objects.select_related('company', 'processing').prefetch_related('answers__question'),
             self.request.user)
     def perform_create(self, serializer):
-        self._audit_save(serializer, created_by=self.request.user)
+        company = serializer.validated_data.get('company')
+        user = self.request.user
+        if is_scoped_to_own_company(user) and company and company.pk != user.company_id:
+            raise PermissionDenied("Entreprise non autorisée.")
+        self._audit_save(serializer, created_by=user)
 
     @action(detail=True, methods=['get'])
     def questions(self, request, pk=None):

@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '../api/client'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { StatusBadge, SeverityBadge, Gauge, DomainBars, Spinner } from '../components/ui'
 import CompanyForm from '../components/CompanyForm'
 import SectorTemplates from '../components/SectorTemplates'
@@ -17,14 +18,16 @@ const dl = async (url, filename) => {
 export default function CompanyDetail() {
   const { id } = useParams()
   const { t, lang } = useApp()
+  const { user } = useAuth()
   const qc = useQueryClient()
   const [params] = useSearchParams()
-  const [tab, setTab] = useState(params.get('tab') || 'info')
+  const isOrgUser = user?.role === 'org_user'
+  const [tab, setTab] = useState(params.get('tab') || (isOrgUser ? 'diagnostic' : 'info'))
   const [notice, setNotice] = useState('')
 
   const { data: company } = useQuery({ queryKey: ['company', id],
     queryFn: () => api.get(`/companies/${id}/`).then((r) => r.data) })
-  const { data: score } = useQuery({ queryKey: ['score', id],
+  const { data: score } = useQuery({ queryKey: ['score', id], enabled: !isOrgUser,
     queryFn: () => api.get(`/companies/${id}/score/`).then((r) => r.data) })
 
   const runEngine = useMutation({
@@ -34,8 +37,8 @@ export default function CompanyDetail() {
   })
 
   if (!company) return <Spinner />
-  const TABS = ['info', 'organigramme', 'diagnostic', 'processings', 'securite', 'droits',
-    'declaration', 'gaps', 'actions']
+  const TABS = isOrgUser ? ['diagnostic'] : ['info', 'organigramme', 'diagnostic', 'processings',
+    'securite', 'droits', 'declaration', 'gaps', 'actions']
 
   return (
     <div>
@@ -44,19 +47,23 @@ export default function CompanyDetail() {
           <h1 className="text-xl font-bold">{company.name}</h1>
           <div className="text-xs text-ink-muted">{company.sector} · <span className="data">{company.rc_number}</span></div>
         </div>
-        <div className="ms-auto flex flex-wrap gap-2">
-          <button className="btn-primary btn-sm" disabled={runEngine.isPending}
-                  onClick={() => runEngine.mutate()}>{t('company.runEngine')}</button>
-          <button className="btn-secondary btn-sm"
-                  onClick={() => dl(`/companies/${id}/export/registre.xlsx`, `registre_${id}.xlsx`)}>
-            {t('company.exportXlsx')}</button>
-          <button className="btn-secondary btn-sm"
-                  onClick={() => dl(`/companies/${id}/export/rapport.pdf`, `rapport_${id}.pdf`)}>
-            {t('company.exportPdf')}</button>
-        </div>
+        {!isOrgUser && (
+          <div className="ms-auto flex flex-wrap gap-2">
+            <button className="btn-primary btn-sm" disabled={runEngine.isPending}
+                    onClick={() => runEngine.mutate()}>{t('company.runEngine')}</button>
+            <button className="btn-secondary btn-sm"
+                    onClick={() => dl(`/companies/${id}/export/registre.xlsx`, `registre_${id}.xlsx`)}>
+              {t('company.exportXlsx')}</button>
+            <button className="btn-secondary btn-sm"
+                    onClick={() => dl(`/companies/${id}/export/rapport.pdf`, `rapport_${id}.pdf`)}>
+              {t('company.exportPdf')}</button>
+          </div>
+        )}
       </div>
       {notice && <div className="card mb-4 py-2 text-sm"
         style={{ background: 'var(--status-conforme-bg)', color: 'var(--status-conforme)' }}>{notice}</div>}
+
+      {!isOrgUser && <ComplianceTimeline companyId={id} company={company} score={score} />}
 
       <div className="flex border-b border-line mb-5 overflow-x-auto">
         {TABS.map((k) => (
@@ -74,6 +81,53 @@ export default function CompanyDetail() {
       {tab === 'declaration' && <DeclarationTab companyId={id} />}
       {tab === 'gaps' && <GapsTab companyId={id} />}
       {tab === 'actions' && <ActionsTab companyId={id} />}
+    </div>
+  )
+}
+
+const TIMELINE_PHASES = ['gouvernance', 'cartographie', 'diagnostic', 'documentation', 'declaration', 'conformite', 'suivi']
+
+function ComplianceTimeline({ companyId, company, score }) {
+  const { t } = useApp()
+  const { data: report } = useQuery({ queryKey: ['validation-check', companyId],
+    queryFn: () => api.get(`/companies/${companyId}/validation-check/`).then((r) => r.data) })
+
+  if (!report) return null
+  const done = [
+    !!company.controller_name && company.dpo_status !== 'aucun',
+    report.processings_count > 0,
+    score?.global != null,
+    report.missing_documents.length === 0,
+    report.ready,
+    report.open_gaps === 0 && report.processings_count > 0,
+  ]
+  const firstTodo = done.findIndex((d) => !d)
+  const stateOf = (i) => {
+    if (i === 6) return 'current'
+    if (done[i]) return 'done'
+    return (firstTodo === i || firstTodo === -1) ? 'current' : 'todo'
+  }
+  const TONE = { done: 'var(--status-conforme)', current: 'var(--status-averifier)', todo: 'var(--status-manquant)' }
+
+  return (
+    <div className="card mb-4 overflow-x-auto">
+      <div className="flex items-center" style={{ minWidth: 700 }}>
+        {TIMELINE_PHASES.map((p, i) => (
+          <div key={p} className="flex items-center flex-1">
+            <div className="flex flex-col items-center gap-1" style={{ minWidth: 84 }}>
+              <div className="rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                   style={{ width: 26, height: 26, background: TONE[stateOf(i)], color: '#fff' }}>
+                {i + 1}
+              </div>
+              <span className="text-[11px] text-center text-ink-secondary leading-tight" style={{ maxWidth: 88 }}>
+                {t(`timeline.${p}`)}</span>
+            </div>
+            {i < TIMELINE_PHASES.length - 1 && (
+              <div className="flex-1 h-[2px] mx-1" style={{ background: 'var(--line)' }} />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

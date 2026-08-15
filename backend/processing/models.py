@@ -70,9 +70,13 @@ class ProcessingActivity(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    version_major = models.PositiveIntegerField(default=1)
+    version_minor = models.PositiveIntegerField(default=0)
 
     class Meta: ordering = ['reference']
     def __str__(self): return f'{self.reference} {self.name}'
+    @property
+    def version(self): return f'{self.version_major}.{self.version_minor}'
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if not self.reference:
