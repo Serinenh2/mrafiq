@@ -61,6 +61,11 @@ def validation_report(company):
     open_gaps = company.gaps.filter(is_open=True).count()
     critical_gaps = company.gaps.filter(is_open=True, severity='critique').count()
 
+    transfers_abroad = [
+        {'id': p.id, 'reference': p.reference, 'name': p.name, 'country': p.transfer_country}
+        for p in processings.filter(transfer_abroad=True)
+    ]
+
     validated_codes = set(GeneratedDocument.objects.filter(
         company=company, status='valide').values_list('template__code', flat=True))
     missing_documents = [
@@ -80,6 +85,7 @@ def validation_report(company):
         'security_total': security_total, 'security_todo': security_todo,
         'rights_todo': rights_todo,
         'open_gaps': open_gaps, 'critical_gaps': critical_gaps,
+        'transfers_abroad': transfers_abroad,
         'missing_documents': missing_documents,
         'dpo_alert': dpo_alert,
         'blocking': blocking,

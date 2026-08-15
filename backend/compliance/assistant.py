@@ -10,7 +10,7 @@ from .services import validation_report, company_score
 
 QUERIES = [
     'risques', 'incomplets', 'manquantes', 'documents', 'actions_prioritaires',
-    'sous_traitants', 'actions_retard', 'synthese', 'services_non_interroges',
+    'sous_traitants', 'actions_retard', 'synthese', 'services_non_interroges', 'transferts',
 ]
 
 def _answer_risques(company):
@@ -91,6 +91,15 @@ def _answer_synthese(company):
     return {'kind': 'ANALYSE', 'items': items,
             'source': 'Agrégation du score de conformité et du contrôle avant validation.'}
 
+def _answer_transferts(company):
+    report = validation_report(company)
+    items = [{'label': f"{t['reference']} · {t['name']}", 'ref': t['country'] or None}
+             for t in report['transfers_abroad']]
+    return {'kind': 'ANALYSE', 'items': items,
+            'source': 'Traitements marqués « transfert à l\'étranger » — module Traitements.',
+            'note': 'Vérification du consultant requise : tout transfert hors du territoire national '
+                    'est soumis à des conditions particulières (garanties, documentation).'}
+
 def _answer_services_non_interroges(company):
     from diagnostics.models import Diagnostic
     norm = lambda s: s.strip().lower()
@@ -106,6 +115,7 @@ HANDLERS = {
     'documents': _answer_documents, 'actions_prioritaires': _answer_actions_prioritaires,
     'sous_traitants': _answer_sous_traitants, 'actions_retard': _answer_actions_retard,
     'synthese': _answer_synthese, 'services_non_interroges': _answer_services_non_interroges,
+    'transferts': _answer_transferts,
 }
 
 def answer(company, query_code):

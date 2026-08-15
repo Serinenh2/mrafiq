@@ -49,6 +49,51 @@ QUESTIONS = [  # (code, section, texte_fr, texte_ar, root, order, pourquoi_fr, p
      "Tout accès par un tiers doit être encadré par un contrat prévoyant des garanties de protection des données.","أي وصول من طرف ثالث يجب أن يُؤطَّر بعقد ينص على ضمانات حماية البيانات."),
     ('Q-TRANSF','Transfert',"Existe-t-il un transfert de données vers l'étranger ?","هل يوجد نقل للبيانات نحو الخارج؟",True,50,
      "Un transfert hors du territoire national est soumis à des conditions particulières qu'il faut identifier tôt.","النقل خارج التراب الوطني يخضع لشروط خاصة يجب تحديدها مبكرًا."),
+
+    ('Q-RECRUT','RH',"L'entreprise recrute-t-elle du personnel (annonces, CV, entretiens) ?","هل توظف المؤسسة مستخدمين (إعلانات، سير ذاتية، مقابلات)؟",True,60,
+     "Le recrutement traite des données de candidats non salariés, avec des règles de conservation distinctes de celles du personnel en poste.","التوظيف يعالج بيانات مترشحين غير أجراء، بقواعد حفظ مختلفة عن مستخدمي المؤسسة."),
+    ('Q-RECRUT-EXT','RH',"Utilisez-vous une plateforme ou un cabinet de recrutement externe ?","هل تستخدمون منصة أو مكتب توظيف خارجي؟",False,61,
+     "Un prestataire externe qui reçoit des CV ou des données de candidats est un sous-traitant à encadrer contractuellement.","أي مزود خارجي يتلقى سيرًا ذاتية أو بيانات مترشحين يُعد مناولًا يجب تأطيره تعاقديًا."),
+
+    ('Q-FOURN','Achats',"L'entreprise gère-t-elle une base de fournisseurs (contacts, contrats) ?","هل تُسيّر المؤسسة قاعدة بيانات للموردين (جهات الاتصال، العقود)؟",True,70,
+     "Les données de contact et bancaires des fournisseurs constituent un traitement à part entière, distinct des clients.","بيانات الاتصال والبيانات المصرفية للموردين تشكل معالجة قائمة بذاتها، مستقلة عن العملاء."),
+
+    ('Q-FACT','Finance',"L'entreprise émet-elle des factures à des personnes physiques ?","هل تُصدر المؤسسة فواتير لأشخاص طبيعيين؟",True,80,
+     "La facturation identifie nommément des personnes et implique des obligations de conservation légale spécifiques.","الفوترة تحدد هوية أشخاص بالاسم وتستوجب التزامات حفظ قانونية خاصة."),
+
+    ('Q-COMPTA','Finance',"La comptabilité de l'entreprise inclut-elle des données de tiers identifiés (clients, fournisseurs, salariés) ?","هل تتضمن محاسبة المؤسسة بيانات أطراف محددة الهوية (عملاء، موردون، مستخدمون)؟",True,90,
+     "La comptabilité recoupe souvent plusieurs traitements existants ; il faut vérifier qu'elle ne crée pas une conservation excessive.","المحاسبة غالبًا ما تتقاطع مع عدة معالجات موجودة؛ يجب التحقق من أنها لا تُنشئ حفظًا مفرطًا للبيانات."),
+
+    ('Q-MKT','Marketing',"L'entreprise mène-t-elle des actions de marketing ou de prospection (emailing, SMS, réseaux sociaux) ?","هل تقوم المؤسسة بأنشطة تسويقية أو تنقيب تجاري (بريد إلكتروني، رسائل نصية، شبكات اجتماعية)؟",True,100,
+     "La prospection commerciale envers des personnes physiques requiert en principe leur consentement préalable.","التنقيب التجاري تجاه الأشخاص الطبيعيين يستوجب مبدئيًا موافقتهم المسبقة."),
+    ('Q-MKT-OUTIL','Marketing',"Utilisez-vous un outil ou un prestataire externe d'emailing/CRM ?","هل تستخدمون أداة أو مزودًا خارجيًا للبريد الإلكتروني التسويقي/CRM؟",False,101,
+     "Un outil externe qui héberge les contacts prospects/clients est un sous-traitant à recenser.","أي أداة خارجية تستضيف بيانات العملاء المحتملين/العملاء تُعد مناولًا يجب حصره."),
+
+    ('Q-COMMUNICATION','Communication',"L'entreprise publie-t-elle du contenu identifiant des personnes (photos, témoignages) sur ses supports de communication ?","هل تنشر المؤسسة محتوى يُعرّف بأشخاص (صور، شهادات) على وسائل اتصالها؟",True,110,
+     "La publication d'images ou de témoignages identifiables est un traitement soumis à l'accord des personnes concernées.","نشر صور أو شهادات يمكن التعرف من خلالها على الأشخاص يُعد معالجة تخضع لموافقة المعنيين."),
+
+    ('Q-WEB','Numérique',"L'entreprise dispose-t-elle d'un site internet collectant des données (formulaire de contact, compte client) ?","هل تملك المؤسسة موقعًا إلكترونيًا يجمع بيانات (استمارة اتصال، حساب عميل)؟",True,120,
+     "Un site web qui collecte des données via un formulaire est un traitement à documenter comme les autres.","الموقع الإلكتروني الذي يجمع بيانات عبر استمارة يُعد معالجة يجب توثيقها كغيرها."),
+    ('Q-WEB-COOKIES','Numérique',"Le site utilise-t-il des cookies de mesure d'audience ou de publicité ?","هل يستخدم الموقع ملفات تعريف الارتباط لقياس الجمهور أو الإشهار؟",False,121,
+     "Les cookies non strictement nécessaires au fonctionnement du site requièrent en principe le consentement du visiteur.","ملفات تعريف الارتباط غير الضرورية لتشغيل الموقع تستوجب مبدئيًا موافقة الزائر."),
+
+    ('Q-APPMOBILE','Numérique',"L'entreprise édite-t-elle une application mobile utilisée par des clients ou des salariés ?","هل تُصدر المؤسسة تطبيقًا للهاتف المحمول يستخدمه عملاء أو مستخدمون؟",True,130,
+     "Une application mobile peut collecter des données supplémentaires (localisation, identifiants d'appareil) à recenser spécifiquement.","التطبيق قد يجمع بيانات إضافية (الموقع الجغرافي، معرّفات الجهاز) يجب حصرها تحديدًا."),
+
+    ('Q-VISITEURS','Sécurité',"L'entreprise enregistre-t-elle l'identité des visiteurs à l'entrée de ses locaux ?","هل تُسجّل المؤسسة هوية الزوار عند دخول مقارها؟",True,140,
+     "Un registre de visiteurs identifie des personnes externes à l'entreprise et doit respecter une durée de conservation limitée.","سجل الزوار يُعرّف بأشخاص خارج المؤسسة ويجب أن يخضع لمدة حفظ محدودة."),
+
+    ('Q-FORMATION','RH',"L'entreprise organise-t-elle des formations internes ou externes pour ses salariés ?","هل تنظم المؤسسة تكوينات داخلية أو خارجية لمستخدميها؟",True,150,
+     "Le suivi des formations (présences, évaluations) constitue un traitement lié au dossier du salarié.","متابعة التكوينات (الحضور، التقييمات) يشكل معالجة مرتبطة بملف المستخدم."),
+
+    ('Q-SANTE','RH',"L'entreprise suit-elle des données de santé ou d'accidents du travail de ses salariés ?","هل تتابع المؤسسة بيانات صحية أو حوادث عمل لمستخدميها؟",True,160,
+     "Les données de santé sont une catégorie de données sensibles nécessitant des garanties renforcées.","البيانات الصحية تُعد فئة بيانات حساسة تستوجب ضمانات معززة."),
+
+    ('Q-GESTCOM','Commercial',"L'entreprise assure-t-elle un suivi commercial (devis, opportunités, CRM) distinct de la facturation ?","هل تضمن المؤسسة متابعة تجارية (عروض أسعار، فرص، CRM) مستقلة عن الفوترة؟",True,170,
+     "Un CRM ou suivi commercial conserve souvent des historiques d'échanges à encadrer par une durée de conservation.","نظام إدارة علاقات العملاء أو المتابعة التجارية يحتفظ غالبًا بتاريخ المراسلات الذي يجب تأطيره بمدة حفظ."),
+
+    ('Q-ADMIN','Gouvernance',"L'entreprise transmet-elle des données à des administrations publiques (CNAS, impôts, douanes…) ?","هل تُرسل المؤسسة بيانات إلى إدارات عمومية (الضمان الاجتماعي، الضرائب، الجمارك...)؟",True,180,
+     "Les transmissions à des administrations sont des destinataires à part entière à identifier dans chaque fiche de traitement concernée.","الإرسال إلى الإدارات العمومية يشكل جهات مستقبلة قائمة بذاتها يجب تحديدها في كل بطاقة معالجة معنية."),
 ]
 RULES = [
     ('Q-EMP','oui','show_question','Q-EMP-PAIE'),
@@ -59,6 +104,31 @@ RULES = [
     ('Q-ACCES','oui','propose_processing',"Contrôle d'accès"),
     ('Q-ST','oui','open_module','sous_traitants'),
     ('Q-TRANSF','oui','open_module','transfert_international'),
+
+    ('Q-RECRUT','oui','show_question','Q-RECRUT-EXT'),
+    ('Q-RECRUT','oui','propose_processing','Recrutement'),
+    ('Q-RECRUT-EXT','oui','open_module','sous_traitants'),
+
+    ('Q-FOURN','oui','propose_processing','Gestion des fournisseurs'),
+    ('Q-FACT','oui','propose_processing','Facturation'),
+    ('Q-COMPTA','oui','propose_processing','Comptabilité'),
+
+    ('Q-MKT','oui','show_question','Q-MKT-OUTIL'),
+    ('Q-MKT','oui','propose_processing','Marketing et prospection'),
+    ('Q-MKT-OUTIL','oui','open_module','sous_traitants'),
+
+    ('Q-COMMUNICATION','oui','propose_processing','Communication institutionnelle'),
+
+    ('Q-WEB','oui','show_question','Q-WEB-COOKIES'),
+    ('Q-WEB','oui','propose_processing','Site internet'),
+    ('Q-WEB-COOKIES','oui','open_module','consentement'),
+
+    ('Q-APPMOBILE','oui','propose_processing','Application mobile'),
+    ('Q-VISITEURS','oui','propose_processing','Gestion des visiteurs'),
+    ('Q-FORMATION','oui','propose_processing','Gestion de la formation'),
+    ('Q-SANTE','oui','propose_processing','Santé et sécurité au travail'),
+    ('Q-GESTCOM','oui','propose_processing','Gestion commerciale'),
+    ('Q-ADMIN','oui','propose_processing','Relations avec les administrations'),
 ]
 DATA_CATS = [('identite','Identité','الهوية'),('coordonnees','Coordonnées','بيانات الاتصال'),
     ('pro','Données professionnelles','بيانات مهنية'),('financier','Données financières','بيانات مالية'),

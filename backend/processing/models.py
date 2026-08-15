@@ -19,6 +19,9 @@ class Processor(models.Model):
     service = models.CharField('Nature du service', max_length=255, blank=True)
     has_contract = models.BooleanField(default=False)
     contract_date = models.DateField(null=True, blank=True)
+    contract_file = models.FileField('Contrat', upload_to='processor_contracts/%Y/%m/', null=True, blank=True)
+    data_access = models.ManyToManyField(PersonalDataCategory, blank=True,
+                                         verbose_name='Données auxquelles il a accès')
     notes = models.TextField(blank=True)
     def __str__(self): return self.name
 
@@ -56,14 +59,38 @@ class ProcessingActivity(models.Model):
 
     interconnection = models.BooleanField(default=False)
     interconnection_details = models.TextField(blank=True)
+    # Interconnexion / communication à des tiers (§13) — détail du destinataire principal
+    recipient_category = models.CharField('Catégorie de destinataire', max_length=128, blank=True)
+    recipient_purpose = models.TextField('Finalité de la communication', blank=True)
+    recipient_frequency = models.CharField('Fréquence', max_length=128, blank=True)
+    recipient_mode = models.CharField('Mode de communication', max_length=128, blank=True)
+    recipient_has_contract = models.BooleanField(default=False)
+    recipient_security_measures = models.TextField(blank=True)
+
     transfer_abroad = models.BooleanField(default=False)
     transfer_country = models.CharField(max_length=128, blank=True)
     transfer_recipient = models.CharField(max_length=255, blank=True)
     transfer_details = models.TextField(blank=True)
+    # Transfert à l'étranger (§14) — compléments
+    transfer_provider = models.CharField('Prestataire', max_length=255, blank=True)
+    transfer_data_types = models.TextField('Types de données transférées', blank=True)
+    transfer_mode = models.CharField('Mode de transfert', max_length=128, blank=True)
+    transfer_hosting = models.CharField('Hébergement', max_length=255, blank=True)
+    transfer_guarantees = models.TextField('Garanties existantes', blank=True)
+    transfer_evidence = models.FileField('Document justificatif', upload_to='transfer_evidence/%Y/%m/',
+                                         null=True, blank=True)
 
     consent_required = models.BooleanField(default=False)
     consent_method = models.CharField(max_length=255, blank=True)
     consent_proof = models.CharField(max_length=255, blank=True)
+    # Consentement (§15) — compléments
+    consent_support = models.CharField('Support', max_length=128, blank=True)
+    consent_date = models.DateField(null=True, blank=True)
+    consent_evidence = models.FileField('Preuve du consentement', upload_to='consent_evidence/%Y/%m/',
+                                        null=True, blank=True)
+    consent_withdrawal = models.TextField('Possibilité de retrait', blank=True)
+    consent_evidence_retention = models.CharField('Conservation de la preuve', max_length=128, blank=True)
+
     rights_information = models.TextField("Information & droits des personnes", blank=True)
 
     created_from = models.CharField(max_length=16, default='manual')  # manual / diagnostic / ai
@@ -82,6 +109,22 @@ class ProcessingActivity(models.Model):
         if not self.reference:
             self.reference = f'TRT-{self.pk:04d}'
             super().save(update_fields=['reference'])
+
+class ProcessingDataItem(models.Model):
+    """Donnée collectée, suivie individuellement au sein d'un traitement (§10)."""
+    processing = models.ForeignKey(ProcessingActivity, on_delete=models.CASCADE, related_name='data_items')
+    category = models.ForeignKey(PersonalDataCategory, null=True, blank=True,
+                                 on_delete=models.SET_NULL, related_name='+')
+    custom_label = models.CharField('Donnée (libre)', max_length=128, blank=True)
+    is_sensitive = models.BooleanField('Caractère sensible', default=False)
+    source = models.CharField(max_length=255, blank=True)
+    purpose = models.TextField('Finalité', blank=True)
+    retention = models.CharField('Durée de conservation', max_length=128, blank=True)
+    recipient = models.CharField('Destinataire', max_length=255, blank=True)
+    order = models.PositiveIntegerField(default=0)
+    class Meta: ordering = ['order', 'id']
+    def __str__(self):
+        return self.custom_label or (self.category.label_fr if self.category else '—')
 
 class ProcessingTemplate(models.Model):
     """Catalogue de traitements types par secteur d'activité (référentiel importé)."""

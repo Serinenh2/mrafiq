@@ -1,13 +1,15 @@
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from accounts.permissions import IsConsultantOrAdmin, scope_to_company
 from audit.utils import AuditModelViewSet, _snap, log
 from .models import (PersonalDataCategory, DataSubjectCategory, SecurityMeasure,
-                     Processor, ProcessingActivity, ProcessingTemplate)
+                     Processor, ProcessingActivity, ProcessingDataItem, ProcessingTemplate)
 from .serializers import (DataCatSerializer, SubjectCatSerializer, SecuritySerializer,
-                          ProcessorSerializer, ProcessingSerializer, ProcessingTemplateSerializer)
+                          ProcessorSerializer, ProcessingSerializer, ProcessingDataItemSerializer,
+                          ProcessingTemplateSerializer)
 
 class RefsView(APIView):
     def get(self, request):
@@ -26,14 +28,25 @@ class ProcessingTemplateViewSet(viewsets.ReadOnlyModelViewSet):
 class ProcessorViewSet(AuditModelViewSet):
     serializer_class = ProcessorSerializer
     permission_classes = [IsConsultantOrAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     def get_queryset(self):
         qs = scope_to_company(Processor.objects.all(), self.request.user)
         company = self.request.query_params.get('company')
         return qs.filter(company_id=company) if company else qs
 
+class ProcessingDataItemViewSet(AuditModelViewSet):
+    serializer_class = ProcessingDataItemSerializer
+    permission_classes = [IsConsultantOrAdmin]
+    def get_queryset(self):
+        qs = scope_to_company(ProcessingDataItem.objects.select_related('category', 'processing__company'),
+                              self.request.user, field='processing__company')
+        processing = self.request.query_params.get('processing')
+        return qs.filter(processing_id=processing) if processing else qs
+
 class ProcessingViewSet(AuditModelViewSet):
     serializer_class = ProcessingSerializer
     permission_classes = [IsConsultantOrAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     pagination_class = None
     def get_queryset(self):
         qs = scope_to_company(

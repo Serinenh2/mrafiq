@@ -77,6 +77,123 @@ function VersionHistory({ pid }) {
   )
 }
 
+const EMPTY_DATA_ITEM = { custom_label: '', category: '', is_sensitive: false, source: '',
+  purpose: '', retention: '', recipient: '' }
+
+function DataItemForm({ form, setForm, onSave, onCancel, saving, refs, t }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  return (
+    <div className="card mb-3">
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))' }}>
+        <div><label className="flabel">{t('proc.dataLabel')}</label>
+          <input className="input" value={form.custom_label} onChange={set('custom_label')} /></div>
+        <div><label className="flabel">{t('proc.dataCategory')}</label>
+          <select className="input" value={form.category} onChange={set('category')}>
+            <option value="">—</option>
+            {(refs?.data_categories ?? []).map((c) => <option key={c.id} value={c.id}>{c.label_fr}</option>)}
+          </select></div>
+        <div><label className="flabel">{t('proc.dataSource')}</label>
+          <input className="input" value={form.source} onChange={set('source')} /></div>
+        <div><label className="flabel">{t('proc.dataRetention')}</label>
+          <input className="input" value={form.retention} onChange={set('retention')} /></div>
+        <div><label className="flabel">{t('proc.dataRecipient')}</label>
+          <input className="input" value={form.recipient} onChange={set('recipient')} /></div>
+      </div>
+      <label className="flex items-center gap-2 text-sm mt-3">
+        <input type="checkbox" checked={form.is_sensitive}
+               onChange={(e) => setForm({ ...form, is_sensitive: e.target.checked })} />
+        {t('proc.dataSensitive')}
+      </label>
+      <div className="mt-3">
+        <label className="flabel">{t('proc.dataPurpose')}</label>
+        <textarea className="input" rows={2} value={form.purpose} onChange={set('purpose')} />
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button className="btn-primary btn-sm" disabled={(!form.custom_label && !form.category) || saving}
+                onClick={onSave}>{t('missions.save')}</button>
+        <button className="btn-ghost btn-sm" onClick={onCancel}>{t('missions.cancel')}</button>
+      </div>
+    </div>
+  )
+}
+
+function DataItemsSection({ pid, refs }) {
+  const { t, lang } = useApp()
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState(EMPTY_DATA_ITEM)
+
+  const { data: items } = useQuery({ queryKey: ['data-items', pid],
+    queryFn: () => api.get(`/processing-data-items/?processing=${pid}`).then((r) => r.data.results ?? r.data) })
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['data-items', pid] })
+  const create = useMutation({
+    mutationFn: (body) => api.post('/processing-data-items/', { processing: pid, ...body, category: body.category || null }),
+    onSuccess: () => { invalidate(); setShowForm(false); setForm(EMPTY_DATA_ITEM) },
+  })
+  const update = useMutation({
+    mutationFn: ({ id, body }) => api.patch(`/processing-data-items/${id}/`, { ...body, category: body.category || null }),
+    onSuccess: () => { invalidate(); setEditingId(null); setForm(EMPTY_DATA_ITEM) },
+  })
+  const remove = useMutation({ mutationFn: (id) => api.delete(`/processing-data-items/${id}/`), onSuccess: invalidate })
+
+  const startEdit = (it) => {
+    setEditingId(it.id); setShowForm(false)
+    setForm({ custom_label: it.custom_label, category: it.category || '', is_sensitive: it.is_sensitive,
+      source: it.source, purpose: it.purpose, retention: it.retention, recipient: it.recipient })
+  }
+
+  if (!items) return null
+  return (
+    <div className="card mb-4">
+      <div className="flex items-center gap-3 mb-3">
+        <h3 className="font-semibold text-sm">{t('proc.dataItems')}</h3>
+        {!showForm && !editingId && (
+          <button className="btn-secondary btn-sm ms-auto"
+                  onClick={() => { setEditingId(null); setForm(EMPTY_DATA_ITEM); setShowForm(true) }}>
+            {t('proc.dataAdd')}</button>
+        )}
+      </div>
+      {showForm && (
+        <DataItemForm form={form} setForm={setForm} saving={create.isPending} refs={refs} t={t}
+          onSave={() => create.mutate(form)} onCancel={() => setShowForm(false)} />
+      )}
+      {!items.length && !showForm ? (
+        <p className="text-sm text-ink-secondary">{t('proc.dataEmpty')}</p>
+      ) : (
+        items.map((it) => editingId === it.id ? (
+          <DataItemForm key={it.id} form={form} setForm={setForm} saving={update.isPending} refs={refs} t={t}
+            onSave={() => update.mutate({ id: it.id, body: form })} onCancel={() => setEditingId(null)} />
+        ) : (
+          <div key={it.id} className="flex items-start gap-3 py-2 border-b border-line last:border-0 text-sm">
+            <div className="flex-1">
+              <div className="font-semibold">
+                {it.custom_label || (lang === 'ar' && it.category_label_ar ? it.category_label_ar : it.category_label_fr)}
+                {it.is_sensitive && (
+                  <span className="badge ms-2"
+                        style={{ color: 'var(--status-nonconforme)', background: 'var(--status-nonconforme-bg)' }}>
+                    {t('proc.dataSensitive')}</span>
+                )}
+              </div>
+              <div className="text-xs text-ink-muted mt-0.5">
+                {[it.source && `${t('proc.dataSource')} : ${it.source}`,
+                  it.retention && `${t('proc.dataRetention')} : ${it.retention}`,
+                  it.recipient && `${t('proc.dataRecipient')} : ${it.recipient}`].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+            <div className="flex gap-1 shrink-0">
+              <button className="btn-ghost btn-sm py-0.5 px-1.5" onClick={() => startEdit(it)}>
+                {t('companies.edit')}</button>
+              <button className="btn-ghost btn-sm py-0.5 px-1.5" style={{ color: 'var(--status-nonconforme)' }}
+                      onClick={() => remove.mutate(it.id)}>{t('org.delete')}</button>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
+
 export default function ProcessingSheet() {
   const { id, pid } = useParams()
   const { t, L } = useApp()
@@ -90,11 +207,28 @@ export default function ProcessingSheet() {
     queryFn: () => api.get('/refs/').then((r) => r.data) })
   const { data: assessments } = useQuery({ queryKey: ['assessments', pid],
     queryFn: () => api.get(`/assessments/?processing=${pid}`).then((r) => r.data) })
+  const { data: processors } = useQuery({ queryKey: ['processors', id],
+    queryFn: () => api.get(`/processors/?company=${id}`).then((r) => r.data.results ?? r.data) })
 
   useEffect(() => { if (proc && !form) setForm(proc) }, [proc])
 
+  const FILE_FIELDS = ['transfer_evidence', 'consent_evidence']
   const save = useMutation({
-    mutationFn: (body) => api.patch(`/processings/${pid}/`, body),
+    mutationFn: (body) => {
+      const hasNewFile = FILE_FIELDS.some((k) => body[k] instanceof File)
+      if (hasNewFile) {
+        const fd = new FormData()
+        Object.entries(body).forEach(([k, v]) => {
+          if (FILE_FIELDS.includes(k)) { if (v instanceof File) fd.append(k, v) }
+          else if (Array.isArray(v)) v.forEach((x) => fd.append(k, x))
+          else if (v != null) fd.append(k, v)
+        })
+        return api.patch(`/processings/${pid}/`, fd)
+      }
+      const clean = { ...body }
+      FILE_FIELDS.forEach((k) => { if (typeof clean[k] === 'string') delete clean[k] })
+      return api.patch(`/processings/${pid}/`, clean)
+    },
     onSuccess: () => { setSaved(true); setTimeout(() => setSaved(false), 2500)
       qc.invalidateQueries({ queryKey: ['processing', pid] }) },
   })
@@ -114,6 +248,7 @@ export default function ProcessingSheet() {
     ['subject_categories', 'proc.subjects', refs.subject_categories],
     ['data_categories', 'proc.datas', refs.data_categories],
     ['security_measures', 'proc.security', refs.security_measures],
+    ['processors', 'proc.processors', processors ?? []],
   ]
 
   return (
@@ -166,6 +301,37 @@ export default function ProcessingSheet() {
         </div>
       </div>
 
+      <div className="card mb-4">
+        <h3 className="font-semibold mb-3 text-sm">{t('proc.recipientsTitle')}</h3>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
+          <div><label className="flabel">{t('proc.recipientCategory')}</label>
+            <input className="input" value={form.recipient_category || ''}
+                   onChange={(e) => setForm({ ...form, recipient_category: e.target.value })} /></div>
+          <div><label className="flabel">{t('proc.recipientFrequency')}</label>
+            <input className="input" value={form.recipient_frequency || ''}
+                   onChange={(e) => setForm({ ...form, recipient_frequency: e.target.value })} /></div>
+          <div><label className="flabel">{t('proc.recipientMode')}</label>
+            <input className="input" value={form.recipient_mode || ''}
+                   onChange={(e) => setForm({ ...form, recipient_mode: e.target.value })} /></div>
+        </div>
+        <div className="mt-3">
+          <label className="flabel">{t('proc.recipientPurpose')}</label>
+          <textarea className="input" rows={2} value={form.recipient_purpose || ''}
+                    onChange={(e) => setForm({ ...form, recipient_purpose: e.target.value })} />
+        </div>
+        <label className="flex items-center gap-2 text-sm font-medium mt-3">
+          <input type="checkbox" checked={form.recipient_has_contract}
+                 onChange={(e) => setForm({ ...form, recipient_has_contract: e.target.checked })} />
+          {t('proc.recipientHasContract')}</label>
+        <div className="mt-3">
+          <label className="flabel">{t('proc.recipientSecurity')}</label>
+          <textarea className="input" rows={2} value={form.recipient_security_measures || ''}
+                    onChange={(e) => setForm({ ...form, recipient_security_measures: e.target.value })} />
+        </div>
+      </div>
+
+      <DataItemsSection pid={pid} refs={refs} />
+
       {M2M.map(([field, label, list]) => (
         <div key={field} className="card mb-4">
           <h3 className="font-semibold mb-3 text-sm">{t(label)}</h3>
@@ -178,12 +344,92 @@ export default function ProcessingSheet() {
                   style={on
                     ? { background: 'var(--brand-primary-600)', color: '#fff', borderColor: 'var(--brand-primary-600)' }
                     : { background: 'var(--bg-surface)', color: 'var(--text-secondary)', borderColor: 'var(--border-strong)' }}
-                  onClick={() => toggleM2M(field, r.id)}>{L(r)}</button>
+                  onClick={() => toggleM2M(field, r.id)}>{r.name ?? L(r)}</button>
               )
             })}
           </div>
         </div>
       ))}
+
+      {form.transfer_abroad && (
+        <div className="card mb-4">
+          <h3 className="font-semibold mb-3 text-sm">{t('proc.transferTitle')}</h3>
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
+            <div><label className="flabel">{t('proc.transferCountry')}</label>
+              <input className="input" value={form.transfer_country || ''}
+                     onChange={(e) => setForm({ ...form, transfer_country: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.transferRecipient')}</label>
+              <input className="input" value={form.transfer_recipient || ''}
+                     onChange={(e) => setForm({ ...form, transfer_recipient: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.transferProvider')}</label>
+              <input className="input" value={form.transfer_provider || ''}
+                     onChange={(e) => setForm({ ...form, transfer_provider: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.transferMode')}</label>
+              <input className="input" value={form.transfer_mode || ''}
+                     onChange={(e) => setForm({ ...form, transfer_mode: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.transferHosting')}</label>
+              <input className="input" value={form.transfer_hosting || ''}
+                     onChange={(e) => setForm({ ...form, transfer_hosting: e.target.value })} /></div>
+          </div>
+          <div className="grid gap-4 mt-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
+            <div><label className="flabel">{t('proc.transferDataTypes')}</label>
+              <textarea className="input" rows={2} value={form.transfer_data_types || ''}
+                        onChange={(e) => setForm({ ...form, transfer_data_types: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.transferDetails')}</label>
+              <textarea className="input" rows={2} value={form.transfer_details || ''}
+                        onChange={(e) => setForm({ ...form, transfer_details: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.transferGuarantees')}</label>
+              <textarea className="input" rows={2} value={form.transfer_guarantees || ''}
+                        onChange={(e) => setForm({ ...form, transfer_guarantees: e.target.value })} /></div>
+          </div>
+          <div className="mt-3">
+            <label className="flabel">{t('proc.transferEvidence')}</label>
+            <input type="file" className="text-xs block mt-1"
+                   onChange={(e) => setForm({ ...form, transfer_evidence: e.target.files[0] })} />
+            {typeof form.transfer_evidence === 'string' && form.transfer_evidence && (
+              <a className="text-xs underline block mt-1" href={form.transfer_evidence} target="_blank" rel="noreferrer">
+                {t('docValide.download')}</a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {form.consent_required && (
+        <div className="card mb-4">
+          <h3 className="font-semibold mb-3 text-sm">{t('proc.consentTitle')}</h3>
+          <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))' }}>
+            <div><label className="flabel">{t('proc.consentMethod')}</label>
+              <input className="input" value={form.consent_method || ''}
+                     onChange={(e) => setForm({ ...form, consent_method: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.consentSupport')}</label>
+              <input className="input" value={form.consent_support || ''}
+                     onChange={(e) => setForm({ ...form, consent_support: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.consentDate')}</label>
+              <input className="input" type="date" value={form.consent_date || ''}
+                     onChange={(e) => setForm({ ...form, consent_date: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.consentProof')}</label>
+              <input className="input" value={form.consent_proof || ''}
+                     onChange={(e) => setForm({ ...form, consent_proof: e.target.value })} /></div>
+            <div><label className="flabel">{t('proc.consentEvidenceRetention')}</label>
+              <input className="input" value={form.consent_evidence_retention || ''}
+                     onChange={(e) => setForm({ ...form, consent_evidence_retention: e.target.value })} /></div>
+          </div>
+          <div className="mt-3">
+            <label className="flabel">{t('proc.consentWithdrawal')}</label>
+            <textarea className="input" rows={2} value={form.consent_withdrawal || ''}
+                      onChange={(e) => setForm({ ...form, consent_withdrawal: e.target.value })} />
+          </div>
+          <div className="mt-3">
+            <label className="flabel">{t('proc.consentEvidence')}</label>
+            <input type="file" className="text-xs block mt-1"
+                   onChange={(e) => setForm({ ...form, consent_evidence: e.target.files[0] })} />
+            {typeof form.consent_evidence === 'string' && form.consent_evidence && (
+              <a className="text-xs underline block mt-1" href={form.consent_evidence} target="_blank" rel="noreferrer">
+                {t('docValide.download')}</a>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 mb-6">
         <button className="btn-primary" disabled={save.isPending}

@@ -38,7 +38,7 @@ export default function CompanyDetail() {
 
   if (!company) return <Spinner />
   const TABS = isOrgUser ? ['diagnostic'] : ['info', 'organigramme', 'diagnostic', 'processings',
-    'securite', 'droits', 'declaration', 'gaps', 'actions']
+    'sousTraitants', 'securite', 'droits', 'declaration', 'gaps', 'actions']
 
   return (
     <div>
@@ -76,6 +76,7 @@ export default function CompanyDetail() {
       {tab === 'organigramme' && <OrganigrammeTab companyId={id} />}
       {tab === 'diagnostic' && <DiagnosticTab companyId={id} sector={company.sector} />}
       {tab === 'processings' && <ProcessingsTab companyId={id} sector={company.sector} />}
+      {tab === 'sousTraitants' && <SousTraitantsTab companyId={id} />}
       {tab === 'securite' && <SecuriteTab companyId={id} />}
       {tab === 'droits' && <DroitsTab companyId={id} />}
       {tab === 'declaration' && <DeclarationTab companyId={id} />}
@@ -283,6 +284,155 @@ function OrganigrammeTab({ companyId }) {
               <div className="text-sm mt-2">{d.manager_name || '—'}</div>
               <div className="text-xs text-ink-muted mt-1 data">{d.manager_phone || '—'}</div>
               <div className="text-xs text-ink-muted">{d.manager_email || '—'}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const EMPTY_PROCESSOR = { name: '', contact: '', service: '', has_contract: false,
+  contract_date: '', notes: '', data_access: [] }
+
+function ProcessorForm({ form, setForm, onSave, onCancel, saving, refs, t }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  const toggleData = (id) => setForm({ ...form, data_access: form.data_access.includes(id)
+    ? form.data_access.filter((x) => x !== id) : [...form.data_access, id] })
+  return (
+    <div className="card mb-3">
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
+        <div><label className="flabel">{t('proc.subName')} *</label>
+          <input className="input" value={form.name} onChange={set('name')} /></div>
+        <div><label className="flabel">{t('proc.subContact')}</label>
+          <input className="input" value={form.contact} onChange={set('contact')} /></div>
+        <div><label className="flabel">{t('proc.subService')}</label>
+          <input className="input" value={form.service} onChange={set('service')} /></div>
+        <div><label className="flabel">{t('proc.subContractDate')}</label>
+          <input className="input" type="date" value={form.contract_date || ''} onChange={set('contract_date')} /></div>
+      </div>
+      <label className="flex items-center gap-2 text-sm mt-3">
+        <input type="checkbox" checked={form.has_contract}
+               onChange={(e) => setForm({ ...form, has_contract: e.target.checked })} />
+        {t('proc.subHasContract')}
+      </label>
+      <div className="mt-3">
+        <label className="flabel">{t('proc.subContractFile')}</label>
+        <input type="file" className="text-xs block mt-1"
+               onChange={(e) => setForm({ ...form, contract_file: e.target.files[0] })} />
+      </div>
+      <div className="mt-3">
+        <label className="flabel">{t('proc.subDataAccess')}</label>
+        <div className="flex flex-wrap gap-2 mt-1">
+          {(refs?.data_categories ?? []).map((r) => (
+            <button key={r.id} type="button"
+              className="text-xs font-semibold rounded-pill px-3 py-1 border transition-colors"
+              style={form.data_access.includes(r.id)
+                ? { background: 'var(--brand-primary-600)', color: '#fff', borderColor: 'var(--brand-primary-600)' }
+                : { background: 'var(--bg-surface)', color: 'var(--text-secondary)', borderColor: 'var(--border-strong)' }}
+              onClick={() => toggleData(r.id)}>{r.label_fr}</button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3">
+        <label className="flabel">{t('proc.subNotes')}</label>
+        <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} />
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button className="btn-primary btn-sm" disabled={!form.name || saving} onClick={onSave}>
+          {t('missions.save')}</button>
+        <button className="btn-ghost btn-sm" onClick={onCancel}>{t('missions.cancel')}</button>
+      </div>
+    </div>
+  )
+}
+
+function SousTraitantsTab({ companyId }) {
+  const { t } = useApp()
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState(EMPTY_PROCESSOR)
+
+  const { data: processors } = useQuery({ queryKey: ['processors', companyId],
+    queryFn: () => api.get(`/processors/?company=${companyId}`).then((r) => r.data.results ?? r.data) })
+  const { data: refs } = useQuery({ queryKey: ['refs'],
+    queryFn: () => api.get('/refs/').then((r) => r.data) })
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['processors', companyId] })
+  const toFormData = (body) => {
+    const fd = new FormData()
+    Object.entries(body).forEach(([k, v]) => {
+      if (k === 'data_access') v.forEach((id) => fd.append('data_access', id))
+      else if (v != null && v !== '') fd.append(k, v)
+    })
+    return fd
+  }
+  const create = useMutation({
+    mutationFn: (body) => api.post('/processors/', toFormData({ company: companyId, ...body })),
+    onSuccess: () => { invalidate(); setShowForm(false); setForm(EMPTY_PROCESSOR) },
+  })
+  const update = useMutation({
+    mutationFn: ({ id, body }) => api.patch(`/processors/${id}/`, toFormData(body)),
+    onSuccess: () => { invalidate(); setEditingId(null); setForm(EMPTY_PROCESSOR) },
+  })
+  const remove = useMutation({ mutationFn: (id) => api.delete(`/processors/${id}/`), onSuccess: invalidate })
+
+  const startEdit = (p) => {
+    setEditingId(p.id); setShowForm(false)
+    setForm({ name: p.name, contact: p.contact, service: p.service, has_contract: p.has_contract,
+      contract_date: p.contract_date || '', notes: p.notes, data_access: p.data_access })
+  }
+  const startAdd = () => { setEditingId(null); setForm(EMPTY_PROCESSOR); setShowForm(true) }
+
+  if (!processors || !refs) return <Spinner />
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <h3 className="font-semibold">{t('proc.subtitle')}</h3>
+        {!showForm && !editingId && (
+          <button className="btn-primary btn-sm ms-auto" onClick={startAdd}>{t('proc.subAdd')}</button>
+        )}
+      </div>
+
+      {showForm && (
+        <ProcessorForm form={form} setForm={setForm} saving={create.isPending} refs={refs} t={t}
+          onSave={() => create.mutate(form)} onCancel={() => setShowForm(false)} />
+      )}
+
+      {!processors.length && !showForm ? (
+        <div className="card text-center py-10"><p className="text-ink-secondary">{t('proc.subEmpty')}</p></div>
+      ) : (
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))' }}>
+          {processors.map((p) => editingId === p.id ? (
+            <ProcessorForm key={p.id} form={form} setForm={setForm} saving={update.isPending} refs={refs} t={t}
+              onSave={() => update.mutate({ id: p.id, body: form })} onCancel={() => setEditingId(null)} />
+          ) : (
+            <div key={p.id} className="card">
+              <div className="flex items-start justify-between gap-2">
+                <div className="font-semibold text-sm">{p.name}</div>
+                <div className="flex gap-1 shrink-0">
+                  <button className="btn-ghost btn-sm py-0.5 px-1.5" onClick={() => startEdit(p)}>
+                    {t('companies.edit')}</button>
+                  <button className="btn-ghost btn-sm py-0.5 px-1.5" style={{ color: 'var(--status-nonconforme)' }}
+                          onClick={() => remove.mutate(p.id)}>{t('org.delete')}</button>
+                </div>
+              </div>
+              <div className="text-sm mt-2">{p.service || '—'}</div>
+              <div className="text-xs text-ink-muted mt-1">{p.contact || '—'}</div>
+              <div className="text-xs mt-2 flex items-center gap-2">
+                <span className="badge" style={p.has_contract
+                  ? { color: 'var(--status-conforme)', background: 'var(--status-conforme-bg)' }
+                  : { color: 'var(--status-manquant)', background: 'var(--status-manquant-bg)' }}>
+                  {p.has_contract ? t('proc.subContractYes') : t('proc.subContractNo')}
+                </span>
+                {p.contract_date && <span className="text-ink-muted data">{p.contract_date}</span>}
+              </div>
+              {p.contract_file && (
+                <a className="text-xs underline block mt-1" href={p.contract_file} target="_blank" rel="noreferrer">
+                  {t('docValide.download')}</a>
+              )}
             </div>
           ))}
         </div>
