@@ -14,6 +14,10 @@ class User(AbstractUser):
     phone = models.CharField(max_length=32, blank=True)
     preferred_language = models.CharField(max_length=2, choices=[('fr','fr'),('ar','ar')], default='fr')
 
+    # Verrouillage après tentatives de connexion échouées (§26)
+    failed_login_attempts = models.PositiveIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+
     @property
     def is_consultant_or_admin(self):
         return self.role in (self.Role.ADMIN, self.Role.CONSULTANT)

@@ -7,11 +7,16 @@ from audit.utils import AuditModelViewSet, log
 from .models import Question, Diagnostic, Answer
 from .serializers import QuestionSerializer, DiagnosticSerializer, AnswerSerializer
 from .services import visible_questions, known_answers, apply_rules
+from .exports import blank_questionnaire_pdf, filled_questionnaire_pdf
 
 class QuestionViewSet(AuditModelViewSet):
     queryset = Question.objects.filter(active=True)
     serializer_class = QuestionSerializer
     permission_classes = [IsConsultantOrAdmin]
+
+    @action(detail=False, methods=['get'], url_path='export/blank.pdf')
+    def export_blank(self, request):
+        return blank_questionnaire_pdf()
 
 def _questions_payload(diag):
     """Questions visibles + réponse courante + mémoire du dossier (§9/§12/§35)."""
@@ -36,6 +41,10 @@ class DiagnosticViewSet(AuditModelViewSet):
         if is_scoped_to_own_company(user) and company and company.pk != user.company_id:
             raise PermissionDenied("Entreprise non autorisée.")
         self._audit_save(serializer, created_by=user)
+
+    @action(detail=True, methods=['get'], url_path='export/rempli.pdf')
+    def export_filled(self, request, pk=None):
+        return filled_questionnaire_pdf(self.get_object())
 
     @action(detail=True, methods=['get'])
     def questions(self, request, pk=None):

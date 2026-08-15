@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import api from '../api/client'
+import api, { downloadFile as dl } from '../api/client'
 import { useApp } from '../context/AppContext'
 import { StatusBadge, Spinner } from '../components/ui'
 
@@ -11,7 +11,12 @@ export default function Diagnostics() {
   if (!data) return <Spinner />
   return (
     <div>
-      <h1 className="text-xl font-bold mb-5">{t('diaglist.title')}</h1>
+      <div className="flex items-center gap-3 mb-5">
+        <h1 className="text-xl font-bold">{t('diaglist.title')}</h1>
+        <button className="btn-ghost btn-sm ms-auto"
+                onClick={() => dl('/questions/export/blank.pdf/', 'questionnaire_vierge.pdf')}>
+          {t('diaglist.printBlank')}</button>
+      </div>
       <div className="card p-0 overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse">
           <thead><tr>

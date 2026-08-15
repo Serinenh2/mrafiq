@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from mrafiq.fields import EncryptedTextField
 
 class Question(models.Model):
     class QType(models.TextChoices):
@@ -48,8 +49,8 @@ class Diagnostic(models.Model):
 class Answer(models.Model):
     diagnostic = models.ForeignKey(Diagnostic, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='+')
-    value = models.CharField(max_length=255, blank=True)
-    comment = models.TextField(blank=True)
+    value = EncryptedTextField(blank=True)  # chiffré au repos (§26)
+    comment = EncryptedTextField(blank=True)  # chiffré au repos (§26)
     evidence = models.FileField('Pièce justificative', upload_to='diagnostic_evidence/%Y/%m/', null=True, blank=True)
     answered_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
     updated_at = models.DateTimeField(auto_now=True)

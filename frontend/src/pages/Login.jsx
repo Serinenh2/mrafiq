@@ -8,13 +8,19 @@ export default function Login() {
   const { login } = useAuth()
   const nav = useNavigate()
   const [form, setForm] = useState({ username: '', password: '' })
-  const [error, setError] = useState(false)
+  const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
   const submit = async () => {
-    setBusy(true); setError(false)
+    setBusy(true); setError('')
     try { await login(form.username, form.password); nav('/') }
-    catch { setError(true) } finally { setBusy(false) }
+    catch (err) {
+      const detail = err.response?.data?.detail
+      // Le message de verrouillage (§26) est déjà en français ; le message par défaut
+      // de SimpleJWT est en anglais et doit rester traduit via t('loginError').
+      setError(detail && detail !== 'No active account found with the given credentials'
+        ? detail : t('loginError'))
+    } finally { setBusy(false) }
   }
 
   return (
@@ -35,7 +41,7 @@ export default function Login() {
           <input className="input mb-4" type="password" value={form.password}
                  onKeyDown={(e) => e.key === 'Enter' && submit()}
                  onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          {error && <p className="text-sm mb-3" style={{ color: 'var(--status-nonconforme)' }}>{t('loginError')}</p>}
+          {error && <p className="text-sm mb-3" style={{ color: 'var(--status-nonconforme)' }}>{error}</p>}
           <button className="btn-primary w-full justify-center" disabled={busy} onClick={submit}>
             {t('login')}
           </button>

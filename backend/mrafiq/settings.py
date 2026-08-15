@@ -12,6 +12,11 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'dev-only-change-me')
 DEBUG = os.getenv('DEBUG', '1') == '1'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
+# Chiffrement des champs sensibles (§26). En production, définir une clé Fernet
+# dédiée via l'environnement (`python -c "from cryptography.fernet import Fernet;
+# print(Fernet.generate_key().decode())"`) plutôt que de dépendre de SECRET_KEY.
+FIELD_ENCRYPTION_KEY = os.getenv('FIELD_ENCRYPTION_KEY')
+
 INSTALLED_APPS = [
     'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes',
     'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles',

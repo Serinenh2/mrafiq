@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from mrafiq.fields import EncryptedTextField
 
 class RefBase(models.Model):
     code = models.CharField(max_length=48, unique=True)
@@ -115,12 +116,13 @@ class ProcessingDataItem(models.Model):
     processing = models.ForeignKey(ProcessingActivity, on_delete=models.CASCADE, related_name='data_items')
     category = models.ForeignKey(PersonalDataCategory, null=True, blank=True,
                                  on_delete=models.SET_NULL, related_name='+')
-    custom_label = models.CharField('Donnée (libre)', max_length=128, blank=True)
+    # Champs chiffrés au repos (§26) : décrivent des données à caractère personnel concrètes.
+    custom_label = EncryptedTextField('Donnée (libre)', blank=True)
     is_sensitive = models.BooleanField('Caractère sensible', default=False)
-    source = models.CharField(max_length=255, blank=True)
-    purpose = models.TextField('Finalité', blank=True)
+    source = EncryptedTextField(blank=True)
+    purpose = EncryptedTextField('Finalité', blank=True)
     retention = models.CharField('Durée de conservation', max_length=128, blank=True)
-    recipient = models.CharField('Destinataire', max_length=255, blank=True)
+    recipient = EncryptedTextField('Destinataire', blank=True)
     order = models.PositiveIntegerField(default=0)
     class Meta: ordering = ['order', 'id']
     def __str__(self):

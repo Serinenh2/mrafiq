@@ -791,6 +791,9 @@ function DiagnosticTab({ companyId, sector }) {
         <div className="text-sm text-ink-secondary">
           {[diag.service, diag.respondent_name, diag.processing_name].filter(Boolean).join(' · ')}
         </div>
+        <button className="btn-ghost btn-sm ms-auto"
+                onClick={() => dl(`/diagnostics/${diag.id}/export/rempli.pdf/`, `questionnaire_rempli_${diag.id}.pdf`)}>
+          {t('diaglist.printFilled')}</button>
       </div>
       {effects && (
         <div className="card mb-4 py-3 text-sm"
