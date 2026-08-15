@@ -31,6 +31,7 @@ class Company(models.Model):
     sector = models.CharField(max_length=128, blank=True)
     main_activity = models.CharField(max_length=255, blank=True)
     secondary_activities = models.TextField(blank=True)
+    logo = models.ImageField(upload_to='company_logos/', null=True, blank=True)
     rc_number = models.CharField('Registre de commerce', max_length=64, blank=True)
     nif = models.CharField('NIF', max_length=64, blank=True)
     nis = models.CharField('NIS', max_length=64, blank=True)

@@ -10,7 +10,7 @@ from audit.utils import AuditModelViewSet, log
 from companies.models import Company
 from .models import DocumentTemplate, GeneratedDocument
 from .serializers import DocumentTemplateSerializer, GeneratedDocumentSerializer
-from .services import merge_docx, copy_as_is, preview_payload
+from .services import merge_docx, stamp_docx, stamp_pdf, copy_as_is, preview_payload
 
 class DocumentTemplateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DocumentTemplate.objects.all()
@@ -22,8 +22,15 @@ class DocumentTemplateViewSet(viewsets.ReadOnlyModelViewSet):
         """Fusionne (ou copie) le modèle pour une entreprise (§18/§41)."""
         template = self.get_object()
         company = get_object_or_404(Company, pk=request.data.get('company'))
-        buf = merge_docx(template.source_file.path, company.name) if template.mergeable \
-            else copy_as_is(template.source_file.path)
+        path = template.source_file.path
+        if template.mergeable:
+            buf = merge_docx(path, company)
+        elif path.lower().endswith('.pdf'):
+            buf = stamp_pdf(path, company)
+        elif path.lower().endswith('.docx'):
+            buf = stamp_docx(path, company)
+        else:
+            buf = copy_as_is(path)
         ext = template.source_file.name.rsplit('.', 1)[-1]
         doc = GeneratedDocument(company=company, template=template, generated_by=request.user)
         doc.file.save(f'{template.code}-{company.pk}.{ext}', ContentFile(buf.read()), save=False)

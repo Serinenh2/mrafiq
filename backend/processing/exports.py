@@ -7,7 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
-from compliance.exports import INK, PRIMARY, BRASS
+from compliance.exports import INK, PRIMARY, BRASS, build_pdf
 
 def processing_pdf(p):
     buf = io.BytesIO()
@@ -87,7 +87,7 @@ def processing_pdf(p):
         "Document préparé via la plateforme MRAFIQ à des fins d'accompagnement. "
         "Il ne constitue ni une décision ni une autorisation d'une autorité administrative.",
         ParagraphStyle('foot', parent=ss['Normal'], fontSize=8, textColor=colors.HexColor('#51617A'))))
-    doc.build(story)
+    build_pdf(doc, story, p.company)
     buf.seek(0)
     resp = HttpResponse(buf.read(), content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="fiche_{p.reference}.pdf"'

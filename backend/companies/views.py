@@ -28,6 +28,7 @@ class CommuneViewSet(viewsets.ReadOnlyModelViewSet):
 class CompanyViewSet(AuditModelViewSet):
     serializer_class = CompanySerializer
     permission_classes = [ReadAnyWriteConsultant]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     def get_queryset(self):
         qs = Company.objects.annotate(processing_count=Count('processings'))
         if is_scoped_to_own_company(self.request.user):

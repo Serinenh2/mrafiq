@@ -8,7 +8,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-from compliance.exports import INK, PRIMARY, BRASS
+from compliance.exports import INK, PRIMARY, BRASS, build_pdf
 from .models import Question
 
 
@@ -84,7 +84,7 @@ def filled_questionnaire_pdf(diagnostic):
         if comments.get(q.code):
             story.append(Paragraph(f'Commentaire : {esc(comments[q.code])}', meta))
         story.append(Spacer(1, 5))
-    doc.build(story)
+    build_pdf(doc, story, diagnostic.company)
     buf.seek(0)
     resp = HttpResponse(buf.read(), content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="questionnaire_rempli_{diagnostic.pk}.pdf"'

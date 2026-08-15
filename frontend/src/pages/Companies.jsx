@@ -17,6 +17,10 @@ export default function Companies() {
     mutationFn: (body) => api.post('/companies/', body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['companies'] }); setShowForm(false); setForm(EMPTY_COMPANY) },
   })
+  const remove = useMutation({
+    mutationFn: (id) => api.delete(`/companies/${id}/`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['companies'] }),
+  })
 
   if (isLoading) return <Spinner />
   return (
@@ -44,7 +48,7 @@ export default function Companies() {
           <thead><tr>
             <th className="th">{t('companies.name')}</th><th className="th">{t('companies.sector')}</th>
             <th className="th">{t('companies.wilaya')}</th><th className="th">{t('companies.employees')}</th>
-            <th className="th">{t('companies.processings')}</th>
+            <th className="th">{t('companies.processings')}</th><th className="th"></th>
           </tr></thead>
           <tbody>
             {data.map((c) => (
@@ -55,9 +59,15 @@ export default function Companies() {
                 <td className="td data">{c.wilaya}</td>
                 <td className="td data">{c.employees_count}</td>
                 <td className="td data">{c.processing_count}</td>
+                <td className="td">
+                  <button className="btn-ghost btn-sm" style={{ color: 'var(--status-nonconforme)' }}
+                          disabled={remove.isPending}
+                          onClick={() => window.confirm(t('companies.deleteConfirm')) && remove.mutate(c.id)}>
+                    {t('companies.delete')}</button>
+                </td>
               </tr>
             ))}
-            {!data.length && <tr><td className="td text-ink-muted" colSpan={5}>{t('common.empty')}</td></tr>}
+            {!data.length && <tr><td className="td text-ink-muted" colSpan={6}>{t('common.empty')}</td></tr>}
           </tbody>
         </table>
       </div>

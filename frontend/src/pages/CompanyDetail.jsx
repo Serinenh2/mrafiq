@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api, { downloadFile as dl } from '../api/client'
 import { useApp } from '../context/AppContext'
@@ -13,6 +13,7 @@ export default function CompanyDetail() {
   const { t, lang } = useApp()
   const { user } = useAuth()
   const qc = useQueryClient()
+  const nav = useNavigate()
   const [params] = useSearchParams()
   const isOrgUser = user?.role === 'org_user'
   const [tab, setTab] = useState(params.get('tab') || (isOrgUser ? 'diagnostic' : 'info'))
@@ -28,6 +29,17 @@ export default function CompanyDetail() {
     onSuccess: () => { setNotice(t('company.engineDone'))
       qc.invalidateQueries(); setTimeout(() => setNotice(''), 3000) },
   })
+  const uploadLogo = useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData(); fd.append('logo', file)
+      return api.patch(`/companies/${id}/`, fd)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['company', id] }),
+  })
+  const removeCompany = useMutation({
+    mutationFn: () => api.delete(`/companies/${id}/`),
+    onSuccess: () => nav('/companies'),
+  })
 
   if (!company) return <Spinner />
   const TABS = isOrgUser ? ['diagnostic'] : ['info', 'organigramme', 'diagnostic', 'processings',
@@ -36,12 +48,26 @@ export default function CompanyDetail() {
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-4">
+        {company.logo ? (
+          <img src={company.logo} alt="" className="rounded object-contain shrink-0"
+               style={{ width: 48, height: 48, background: 'var(--surface)', border: '1px solid var(--line)' }} />
+        ) : (
+          <div className="rounded shrink-0 grid place-items-center text-xs text-ink-muted"
+               style={{ width: 48, height: 48, background: 'var(--bg-app)', border: '1px dashed var(--line)' }}>
+            {t('companies.logo')}
+          </div>
+        )}
         <div>
           <h1 className="text-xl font-bold">{company.name}</h1>
           <div className="text-xs text-ink-muted">{company.sector} · <span className="data">{company.rc_number}</span></div>
         </div>
         {!isOrgUser && (
-          <div className="ms-auto flex flex-wrap gap-2">
+          <div className="ms-auto flex flex-wrap items-center gap-2">
+            <label className="btn-secondary btn-sm cursor-pointer">
+              {company.logo ? t('companies.changeLogo') : t('companies.uploadLogo')}
+              <input type="file" accept="image/*" className="hidden"
+                     onChange={(e) => e.target.files[0] && uploadLogo.mutate(e.target.files[0])} />
+            </label>
             <button className="btn-primary btn-sm" disabled={runEngine.isPending}
                     onClick={() => runEngine.mutate()}>{t('company.runEngine')}</button>
             <button className="btn-secondary btn-sm"
@@ -50,6 +76,10 @@ export default function CompanyDetail() {
             <button className="btn-secondary btn-sm"
                     onClick={() => dl(`/companies/${id}/export/rapport.pdf`, `rapport_${id}.pdf`)}>
               {t('company.exportPdf')}</button>
+            <button className="btn-ghost btn-sm" style={{ color: 'var(--status-nonconforme)' }}
+                    disabled={removeCompany.isPending}
+                    onClick={() => window.confirm(t('companies.deleteConfirm')) && removeCompany.mutate()}>
+              {t('companies.delete')}</button>
           </div>
         )}
       </div>

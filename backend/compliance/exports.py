@@ -1,19 +1,75 @@
 """Exports : registre Excel (§14/§39) et rapport de diagnostic PDF (§23)."""
 import io
+import os
 from datetime import date
 from django.http import HttpResponse
 from openpyxl import Workbook
+from openpyxl.drawing.image import Image as XlsxImage
 from openpyxl.styles import Font, PatternFill, Alignment
+from PIL import Image as PILImage
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
                                 TableStyle, HRFlowable)
 from .services import company_score, validation_report
 
 INK = colors.HexColor('#0B2545'); PRIMARY = colors.HexColor('#1B5CB4')
 BRASS = colors.HexColor('#B08A3C')
+
+def _logo_path(company):
+    logo = getattr(company, 'logo', None) if company else None
+    if not logo:
+        return None
+    try:
+        path = logo.path
+        return path if os.path.exists(path) else None
+    except Exception:
+        return None
+
+def company_logo_decorator(company):
+    """Callback reportlab dessinant le logo de l'entreprise en haut de chaque page (import logo)."""
+    path = _logo_path(company)
+    if not path:
+        return None
+    try:
+        reader = ImageReader(path)
+        iw, ih = reader.getSize()
+    except Exception:
+        return None
+    max_w, max_h = 26 * mm, 12 * mm
+    ratio = min(max_w / iw, max_h / ih)
+    w, h = iw * ratio, ih * ratio
+    def _draw(canvas, doc):
+        canvas.saveState()
+        x = doc.pagesize[0] - doc.rightMargin - w
+        y = doc.pagesize[1] - 4 * mm - h
+        canvas.drawImage(reader, x, y, width=w, height=h, mask='auto', preserveAspectRatio=True)
+        canvas.restoreState()
+    return _draw
+
+_noop_page = lambda canvas, doc: None
+
+def build_pdf(doc, story, company):
+    deco = company_logo_decorator(company) or _noop_page
+    doc.build(story, onFirstPage=deco, onLaterPages=deco)
+
+def add_logo_to_sheet(ws, company, anchor='A1', max_w=140, max_h=48):
+    """Ajoute le logo de l'entreprise (image flottante) en haut de la feuille Excel."""
+    path = _logo_path(company)
+    if not path:
+        return
+    try:
+        iw, ih = PILImage.open(path).size
+        ratio = min(max_w / iw, max_h / ih, 1)
+        img = XlsxImage(path)
+        img.width, img.height = iw * ratio, ih * ratio
+        img.anchor = anchor
+        ws.add_image(img)
+    except Exception:
+        pass
 
 def registre_xlsx(company):
     wb = Workbook(); ws = wb.active; ws.title = 'Registre'
@@ -41,6 +97,8 @@ def registre_xlsx(company):
         ])
     for i, w in enumerate([10,26,18,16,34,24,28,24,16,22,14,14,12], start=1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+    ws.insert_rows(1, amount=2); ws.row_dimensions[1].height = 36
+    add_logo_to_sheet(ws, company)
     buf = io.BytesIO(); wb.save(buf); buf.seek(0)
     resp = HttpResponse(buf.read(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -109,7 +167,7 @@ def diagnostic_pdf(company):
         "Document préparé via la plateforme MRAFIQ à des fins d'accompagnement. "
         "Il ne constitue ni une décision ni une autorisation d'une autorité administrative.",
         ParagraphStyle('foot', parent=ss['Normal'], fontSize=8, textColor=colors.HexColor('#51617A'))))
-    doc.build(story)
+    build_pdf(doc, story, company)
     buf.seek(0)
     resp = HttpResponse(buf.read(), content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="rapport_diagnostic_{company.pk}.pdf"'
@@ -189,7 +247,7 @@ def declaration_pdf(company):
         "consultant. Il constitue un outil d'aide à la déclaration et ne dispense pas d'une "
         "vérification juridique finale.",
         ParagraphStyle('foot', parent=ss['Normal'], fontSize=8, textColor=colors.HexColor('#51617A'))))
-    doc.build(story)
+    build_pdf(doc, story, company)
     buf.seek(0)
     resp = HttpResponse(buf.read(), content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="declaration_{company.pk}.pdf"'
@@ -230,7 +288,7 @@ def company_profile_pdf(company):
         ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F5F7FB')), ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ('TOPPADDING', (0,0), (-1,-1), 5), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
     story.append(t)
-    doc.build(story)
+    build_pdf(doc, story, company)
     buf.seek(0)
     resp = HttpResponse(buf.read(), content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="fiche_entreprise_{company.pk}.pdf"'
@@ -254,6 +312,8 @@ def actions_xlsx(company):
         ])
     for i, w in enumerate([10, 40, 16, 12, 18, 14, 14, 12, 30], start=1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+    ws.insert_rows(1, amount=2); ws.row_dimensions[1].height = 36
+    add_logo_to_sheet(ws, company)
     buf = io.BytesIO(); wb.save(buf); buf.seek(0)
     resp = HttpResponse(buf.read(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -281,6 +341,8 @@ def cartographie_xlsx(company):
         ])
     for i, w in enumerate([32, 16, 26, 26, 22, 26, 18], start=1):
         ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+    ws.insert_rows(1, amount=2); ws.row_dimensions[1].height = 36
+    add_logo_to_sheet(ws, company)
     buf = io.BytesIO(); wb.save(buf); buf.seek(0)
     resp = HttpResponse(buf.read(),
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
