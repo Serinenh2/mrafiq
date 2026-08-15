@@ -10,6 +10,7 @@ const FIELDS = [
   ['owner_name', 'proc.owner'], ['data_sources', 'proc.sources'],
   ['retention_duration', 'proc.retention'], ['recipients', 'proc.recipients'],
 ]
+const ORG_FIELDS = ['department', 'owner_name']
 const STATUSES = ['propose','brouillon','renseigne','a_verifier','verifie','valide','rejete']
 const ASSESS = ['conforme','partiel','non_conforme','manquant','a_verifier']
 
@@ -209,6 +210,8 @@ export default function ProcessingSheet() {
     queryFn: () => api.get(`/assessments/?processing=${pid}`).then((r) => r.data) })
   const { data: processors } = useQuery({ queryKey: ['processors', id],
     queryFn: () => api.get(`/processors/?company=${id}`).then((r) => r.data.results ?? r.data) })
+  const { data: departments } = useQuery({ queryKey: ['departments', id],
+    queryFn: () => api.get(`/departments/?company=${id}`).then((r) => r.data.results ?? r.data) })
 
   useEffect(() => { if (proc && !form) setForm(proc) }, [proc])
 
@@ -239,6 +242,9 @@ export default function ProcessingSheet() {
   })
 
   if (!form || !refs) return <Spinner />
+  const departmentNames = [...new Set((departments ?? []).map((d) => d.name).filter(Boolean))]
+  const managerNames = [...new Set((departments ?? [])
+    .filter((d) => d.name === form.department).map((d) => d.manager_name).filter(Boolean))]
   const toggleM2M = (field, refId) => {
     const list = form[field].includes(refId)
       ? form[field].filter((x) => x !== refId) : [...form[field], refId]
@@ -277,8 +283,19 @@ export default function ProcessingSheet() {
           {FIELDS.map(([f, label]) => (
             <div key={f}>
               <label className="flabel">{t(label)}</label>
-              <input className="input" value={form[f] || ''}
-                     onChange={(e) => setForm({ ...form, [f]: e.target.value })} />
+              {ORG_FIELDS.includes(f) ? (
+                <select className="input" value={form[f] || ''} disabled={f === 'owner_name' && !form.department}
+                        onChange={(e) => setForm(f === 'department'
+                          ? { ...form, department: e.target.value, owner_name: '' }
+                          : { ...form, [f]: e.target.value })}>
+                  <option value="">—</option>
+                  {(f === 'department' ? departmentNames : managerNames).map((v) => (
+                    <option key={v} value={v}>{v}</option>))}
+                </select>
+              ) : (
+                <input className="input" value={form[f] || ''}
+                       onChange={(e) => setForm({ ...form, [f]: e.target.value })} />
+              )}
             </div>
           ))}
           <div>
