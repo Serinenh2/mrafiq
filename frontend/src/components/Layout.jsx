@@ -15,6 +15,8 @@ const ICONS = {
   carto: 'M6 3.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM18 3.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM12 15.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM7.5 7.5l3 8M16.5 7.5l-3 8',
   actions: 'M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9',
   reports: 'M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6',
+  docValide: 'M9 12l2 2 4-4M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6',
+  person: 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z',
 }
 
 export default function Layout() {
@@ -36,6 +38,8 @@ export default function Layout() {
              style={{ color: '#5F7396' }}>{t('nav.pilotage')}</div>
         <NavLink to="/" end className={cls}><Icon d={ICONS.dash} />{t('nav.dashboard')}</NavLink>
         <NavLink to="/companies" className={cls}><Icon d={ICONS.companies} />{t('nav.companies')}</NavLink>
+        <NavLink to="/responsable-traitements" className={cls}><Icon d={ICONS.person} />{t('nav.responsable')}</NavLink>
+        <NavLink to="/dpo" className={cls}><Icon d={ICONS.person} />{t('nav.dpo')}</NavLink>
         <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pt-4 pb-1.5"
              style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
         <NavLink to="/missions" className={cls}><Icon d={ICONS.missions} />{t('nav.missions')}</NavLink>
@@ -43,6 +47,7 @@ export default function Layout() {
         <NavLink to="/registre" className={cls}><Icon d={ICONS.registre} />{t('nav.registre')}</NavLink>
         <NavLink to="/cartographie" className={cls}><Icon d={ICONS.carto} />{t('nav.carto')}</NavLink>
         <NavLink to="/actions" className={cls}><Icon d={ICONS.actions} />{t('nav.actions')}</NavLink>
+        <NavLink to="/documents-valides" className={cls}><Icon d={ICONS.docValide} />{t('nav.documentsValides')}</NavLink>
         <NavLink to="/rapports" className={cls}><Icon d={ICONS.reports} />{t('nav.reports')}</NavLink>
         <div className="mt-auto pt-6 px-2 text-xs" style={{ color: '#8FA3C0' }}>
           {user?.first_name || user?.username} · {user?.role}

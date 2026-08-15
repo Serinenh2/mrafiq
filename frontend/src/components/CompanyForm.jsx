@@ -3,9 +3,10 @@ import api from '../api/client'
 import { useApp } from '../context/AppContext'
 
 export const EMPTY_COMPANY = {
-  name: '', legal_form: '', sector: '', main_activity: '', rc_number: '', nif: '',
-  address: '', wilaya: '', employees_count: 0, contact_name: '', contact_email: '', contact_phone: '',
-  secondary_activities: '', it_systems: '', it_providers: '', notes: '',
+  name: '', legal_form: '', sector: '', main_activity: '', rc_number: '', nif: '', nis: '',
+  address: '', wilaya: '', commune: '', website: '', employees_count: 0,
+  contact_name: '', contact_email: '', contact_phone: '',
+  secondary_activities: '', it_systems: '', it_providers: '', internal_organisation: '', notes: '',
 }
 
 const WILAYAS = Array.from({ length: 58 }, (_, i) => String(i + 1).padStart(2, '0'))
@@ -36,6 +37,8 @@ export default function CompanyForm({ form, onChange }) {
           <input className="input" value={form.rc_number} onChange={set('rc_number')} /></div>
         <div><label className="flabel">{t('companies.nif')}</label>
           <input className="input" value={form.nif} onChange={set('nif')} /></div>
+        <div><label className="flabel">{t('companies.nis')}</label>
+          <input className="input" value={form.nis} onChange={set('nis')} /></div>
         <div><label className="flabel">{t('companies.address')}</label>
           <input className="input" value={form.address} onChange={set('address')} /></div>
         <div><label className="flabel">{t('companies.wilaya')}</label>
@@ -43,6 +46,10 @@ export default function CompanyForm({ form, onChange }) {
             <option value="">—</option>
             {WILAYAS.map((w) => <option key={w} value={w}>{w}</option>)}
           </select></div>
+        <div><label className="flabel">{t('companies.commune')}</label>
+          <input className="input" value={form.commune} onChange={set('commune')} /></div>
+        <div><label className="flabel">{t('companies.website')}</label>
+          <input className="input" type="url" placeholder="https://" value={form.website} onChange={set('website')} /></div>
         <div><label className="flabel">{t('companies.employees')}</label>
           <input className="input" type="number" min="0" value={form.employees_count} onChange={set('employees_count')} /></div>
         <div><label className="flabel">{t('companies.contactName')}</label>
@@ -59,6 +66,8 @@ export default function CompanyForm({ form, onChange }) {
           <textarea className="input" rows={2} value={form.it_systems} onChange={set('it_systems')} /></div>
         <div><label className="flabel">{t('companies.itProviders')}</label>
           <textarea className="input" rows={2} value={form.it_providers} onChange={set('it_providers')} /></div>
+        <div><label className="flabel">{t('companies.internalOrganisation')}</label>
+          <textarea className="input" rows={2} value={form.internal_organisation} onChange={set('internal_organisation')} /></div>
         <div><label className="flabel">{t('companies.notes')}</label>
           <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} /></div>
       </div>

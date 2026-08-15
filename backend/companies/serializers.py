@@ -1,11 +1,15 @@
 from rest_framework import serializers
-from .models import Company, CompanySite
+from .models import Company, CompanySite, Department
 
 class CompanySiteSerializer(serializers.ModelSerializer):
     class Meta: model = CompanySite; fields = '__all__'
 
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta: model = Department; fields = '__all__'
+
 class CompanySerializer(serializers.ModelSerializer):
     sites = CompanySiteSerializer(many=True, read_only=True)
+    departments = DepartmentSerializer(many=True, read_only=True)
     processing_count = serializers.IntegerField(read_only=True)
     class Meta:
         model = Company

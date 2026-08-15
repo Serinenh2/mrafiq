@@ -34,7 +34,7 @@ export default function CompanyDetail() {
   })
 
   if (!company) return <Spinner />
-  const TABS = ['info', 'diagnostic', 'processings', 'gaps', 'actions']
+  const TABS = ['info', 'organigramme', 'diagnostic', 'processings', 'gaps', 'actions']
 
   return (
     <div>
@@ -65,6 +65,7 @@ export default function CompanyDetail() {
       </div>
 
       {tab === 'info' && <InfoTab companyId={id} company={company} score={score} lang={lang} t={t} />}
+      {tab === 'organigramme' && <OrganigrammeTab companyId={id} />}
       {tab === 'diagnostic' && <DiagnosticTab companyId={id} sector={company.sector} />}
       {tab === 'processings' && <ProcessingsTab companyId={id} sector={company.sector} />}
       {tab === 'gaps' && <GapsTab companyId={id} />}
@@ -85,11 +86,14 @@ function InfoTab({ companyId, company, score, lang, t }) {
   const rows = [
     ['companies.legalForm', company.legal_form], ['companies.sector', company.sector],
     ['companies.mainActivity', company.main_activity], ['companies.rc', company.rc_number],
-    ['companies.nif', company.nif], ['companies.wilaya', company.wilaya],
-    ['companies.employees', company.employees_count], ['companies.address', company.address],
+    ['companies.nif', company.nif], ['companies.nis', company.nis],
+    ['companies.address', company.address], ['companies.wilaya', company.wilaya],
+    ['companies.commune', company.commune], ['companies.website', company.website],
+    ['companies.employees', company.employees_count],
     ['companies.contactName', company.contact_name], ['companies.contactEmail', company.contact_email],
     ['companies.contactPhone', company.contact_phone],
     ['companies.itSystems', company.it_systems], ['companies.itProviders', company.it_providers],
+    ['companies.internalOrganisation', company.internal_organisation],
     ['companies.notes', company.notes],
   ]
   return (
@@ -129,6 +133,102 @@ function InfoTab({ companyId, company, score, lang, t }) {
           </>
         ) : <Spinner />}
       </div>
+    </div>
+  )
+}
+
+function DepartmentForm({ form, setForm, onSave, onCancel, saving, t }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  return (
+    <div className="card mb-3">
+      <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))' }}>
+        <div><label className="flabel">{t('org.department')} *</label>
+          <input className="input" value={form.name} onChange={set('name')} /></div>
+        <div><label className="flabel">{t('org.managerName')}</label>
+          <input className="input" value={form.manager_name} onChange={set('manager_name')} /></div>
+        <div><label className="flabel">{t('org.managerPhone')}</label>
+          <input className="input" value={form.manager_phone} onChange={set('manager_phone')} /></div>
+        <div><label className="flabel">{t('org.managerEmail')}</label>
+          <input className="input" type="email" value={form.manager_email} onChange={set('manager_email')} /></div>
+      </div>
+      <div className="flex gap-2 mt-4">
+        <button className="btn-primary btn-sm" disabled={!form.name || saving} onClick={onSave}>
+          {t('missions.save')}</button>
+        <button className="btn-ghost btn-sm" onClick={onCancel}>{t('missions.cancel')}</button>
+      </div>
+    </div>
+  )
+}
+
+const EMPTY_DEPARTMENT = { name: '', manager_name: '', manager_phone: '', manager_email: '' }
+
+function OrganigrammeTab({ companyId }) {
+  const { t } = useApp()
+  const qc = useQueryClient()
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState(null)
+  const [form, setForm] = useState(EMPTY_DEPARTMENT)
+
+  const { data: departments } = useQuery({ queryKey: ['departments', companyId],
+    queryFn: () => api.get(`/departments/?company=${companyId}`).then((r) => r.data.results ?? r.data) })
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['departments', companyId] })
+  const create = useMutation({
+    mutationFn: (body) => api.post('/departments/', { company: companyId, ...body }),
+    onSuccess: () => { invalidate(); setShowForm(false); setForm(EMPTY_DEPARTMENT) },
+  })
+  const update = useMutation({
+    mutationFn: ({ id, body }) => api.patch(`/departments/${id}/`, body),
+    onSuccess: () => { invalidate(); setEditingId(null); setForm(EMPTY_DEPARTMENT) },
+  })
+  const remove = useMutation({ mutationFn: (id) => api.delete(`/departments/${id}/`), onSuccess: invalidate })
+
+  const startEdit = (d) => {
+    setEditingId(d.id); setShowForm(false)
+    setForm({ name: d.name, manager_name: d.manager_name,
+      manager_phone: d.manager_phone, manager_email: d.manager_email })
+  }
+  const startAdd = () => { setEditingId(null); setForm(EMPTY_DEPARTMENT); setShowForm(true) }
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <h3 className="font-semibold">{t('org.title')}</h3>
+        {!showForm && !editingId && (
+          <button className="btn-primary btn-sm ms-auto" onClick={startAdd}>{t('org.add')}</button>
+        )}
+      </div>
+
+      {showForm && (
+        <DepartmentForm form={form} setForm={setForm} saving={create.isPending} t={t}
+          onSave={() => create.mutate(form)} onCancel={() => setShowForm(false)} />
+      )}
+
+      {!departments ? <Spinner /> : !departments.length && !showForm ? (
+        <div className="card text-center py-10"><p className="text-ink-secondary">{t('org.empty')}</p></div>
+      ) : (
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))' }}>
+          {departments.map((d) => editingId === d.id ? (
+            <DepartmentForm key={d.id} form={form} setForm={setForm} saving={update.isPending} t={t}
+              onSave={() => update.mutate({ id: d.id, body: form })} onCancel={() => setEditingId(null)} />
+          ) : (
+            <div key={d.id} className="card">
+              <div className="flex items-start justify-between gap-2">
+                <div className="font-semibold text-sm">{d.name}</div>
+                <div className="flex gap-1 shrink-0">
+                  <button className="btn-ghost btn-sm py-0.5 px-1.5" onClick={() => startEdit(d)}>
+                    {t('companies.edit')}</button>
+                  <button className="btn-ghost btn-sm py-0.5 px-1.5" style={{ color: 'var(--status-nonconforme)' }}
+                          onClick={() => remove.mutate(d.id)}>{t('org.delete')}</button>
+                </div>
+              </div>
+              <div className="text-sm mt-2">{d.manager_name || '—'}</div>
+              <div className="text-xs text-ink-muted mt-1 data">{d.manager_phone || '—'}</div>
+              <div className="text-xs text-ink-muted">{d.manager_email || '—'}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
