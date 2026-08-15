@@ -1,11 +1,29 @@
 from django.db.models import Count
 from rest_framework import viewsets
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsConsultantOrAdmin, ReadAnyWriteConsultant, scope_to_company, is_scoped_to_own_company
 from audit.utils import AuditModelViewSet, log, _snap
-from .models import Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure
+from .models import Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure, Wilaya, Commune
 from .serializers import (CompanySerializer, CompanySiteSerializer, DepartmentSerializer,
-                          SecurityChecklistItemSerializer, RightsProcedureSerializer)
+                          SecurityChecklistItemSerializer, RightsProcedureSerializer,
+                          WilayaSerializer, CommuneSerializer)
+
+class WilayaViewSet(viewsets.ReadOnlyModelViewSet):
+    """Référentiel du code géographique national (§ liste déroulante wilaya/commune)."""
+    queryset = Wilaya.objects.all()
+    serializer_class = WilayaSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+class CommuneViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = CommuneSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+    def get_queryset(self):
+        qs = Commune.objects.select_related('wilaya')
+        wilaya = self.request.query_params.get('wilaya')
+        return qs.filter(wilaya_id=wilaya) if wilaya else qs
 
 class CompanyViewSet(AuditModelViewSet):
     serializer_class = CompanySerializer

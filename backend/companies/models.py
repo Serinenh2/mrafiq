@@ -1,7 +1,29 @@
 from django.conf import settings
 from django.db import models
 
-WILAYAS = [(f'{i:02d}', f'{i:02d}') for i in range(1, 59)]
+class Wilaya(models.Model):
+    """Référentiel du code géographique national (69 wilayas, 2021)."""
+    code = models.CharField(max_length=2, primary_key=True)
+    name_fr = models.CharField(max_length=64)
+    name_ar = models.CharField(max_length=64)
+
+    class Meta:
+        ordering = ['code']
+    def __str__(self):
+        return f'{self.code} - {self.name_fr}'
+
+class Commune(models.Model):
+    """Référentiel du code géographique national — communes rattachées à une wilaya."""
+    wilaya = models.ForeignKey(Wilaya, on_delete=models.CASCADE, related_name='communes')
+    code = models.CharField(max_length=4)
+    name_fr = models.CharField(max_length=128)
+    name_ar = models.CharField(max_length=128)
+
+    class Meta:
+        unique_together = [('wilaya', 'code')]
+        ordering = ['wilaya_id', 'name_fr']
+    def __str__(self):
+        return f'{self.name_fr} ({self.wilaya_id})'
 
 class Company(models.Model):
     name = models.CharField('Raison sociale', max_length=255)
@@ -13,7 +35,7 @@ class Company(models.Model):
     nif = models.CharField('NIF', max_length=64, blank=True)
     nis = models.CharField('NIS', max_length=64, blank=True)
     address = models.CharField(max_length=255, blank=True)
-    wilaya = models.CharField(max_length=2, choices=WILAYAS, blank=True)
+    wilaya = models.CharField(max_length=2, blank=True)
     commune = models.CharField(max_length=128, blank=True)
     website = models.URLField('Site internet', blank=True)
     internal_organisation = models.TextField('Organisation interne', blank=True)
@@ -53,7 +75,7 @@ class CompanySite(models.Model):
     company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='sites')
     name = models.CharField(max_length=128)
     address = models.CharField(max_length=255, blank=True)
-    wilaya = models.CharField(max_length=2, choices=WILAYAS, blank=True)
+    wilaya = models.CharField(max_length=2, blank=True)
 
 class Department(models.Model):
     """Organigramme : un service/département de l'entreprise et son responsable."""

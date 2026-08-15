@@ -9,15 +9,20 @@ export const EMPTY_COMPANY = {
   secondary_activities: '', it_systems: '', it_providers: '', internal_organisation: '', notes: '',
 }
 
-const WILAYAS = Array.from({ length: 58 }, (_, i) => String(i + 1).padStart(2, '0'))
-
 export default function CompanyForm({ form, onChange }) {
-  const { t, lang } = useApp()
+  const { t, lang, L } = useApp()
   const set = (k) => (e) => onChange({ ...form, [k]: e.target.value })
   const { data: templates } = useQuery({ queryKey: ['processing-templates'],
     queryFn: () => api.get('/processing-templates/').then((r) => r.data) })
   const domains = [...new Set((templates ?? [])
     .map((tpl) => (lang === 'ar' && tpl.domain_ar ? tpl.domain_ar : tpl.domain_fr)))].sort()
+
+  const { data: wilayas } = useQuery({ queryKey: ['wilayas'],
+    queryFn: () => api.get('/wilayas/').then((r) => r.data) })
+  const { data: communes } = useQuery({ queryKey: ['communes', form.wilaya], enabled: !!form.wilaya,
+    queryFn: () => api.get(`/communes/?wilaya=${form.wilaya}`).then((r) => r.data) })
+
+  const setWilaya = (e) => onChange({ ...form, wilaya: e.target.value, commune: '' })
 
   return (
     <>
@@ -42,12 +47,19 @@ export default function CompanyForm({ form, onChange }) {
         <div><label className="flabel">{t('companies.address')}</label>
           <input className="input" value={form.address} onChange={set('address')} /></div>
         <div><label className="flabel">{t('companies.wilaya')}</label>
-          <select className="input" value={form.wilaya} onChange={set('wilaya')}>
+          <select className="input" value={form.wilaya} onChange={setWilaya}>
             <option value="">—</option>
-            {WILAYAS.map((w) => <option key={w} value={w}>{w}</option>)}
+            {(wilayas ?? []).map((w) => (
+              <option key={w.code} value={w.code}>{w.code} — {L(w, 'name_fr', 'name_ar')}</option>
+            ))}
           </select></div>
         <div><label className="flabel">{t('companies.commune')}</label>
-          <input className="input" value={form.commune} onChange={set('commune')} /></div>
+          <select className="input" value={form.commune} onChange={set('commune')} disabled={!form.wilaya}>
+            <option value="">—</option>
+            {(communes ?? []).map((c) => (
+              <option key={c.id} value={c.name_fr}>{L(c, 'name_fr', 'name_ar')}</option>
+            ))}
+          </select></div>
         <div><label className="flabel">{t('companies.website')}</label>
           <input className="input" type="url" placeholder="https://" value={form.website} onChange={set('website')} /></div>
         <div><label className="flabel">{t('companies.employees')}</label>

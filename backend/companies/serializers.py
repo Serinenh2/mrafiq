@@ -1,5 +1,11 @@
 from rest_framework import serializers
-from .models import Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure
+from .models import Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure, Wilaya, Commune
+
+class WilayaSerializer(serializers.ModelSerializer):
+    class Meta: model = Wilaya; fields = ['code', 'name_fr', 'name_ar']
+
+class CommuneSerializer(serializers.ModelSerializer):
+    class Meta: model = Commune; fields = ['id', 'code', 'name_fr', 'name_ar', 'wilaya']
 
 class CompanySiteSerializer(serializers.ModelSerializer):
     class Meta: model = CompanySite; fields = '__all__'
