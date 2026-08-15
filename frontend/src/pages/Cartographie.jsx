@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import api from '../api/client'
+import api, { downloadFile as dl } from '../api/client'
 import { useApp } from '../context/AppContext'
 import { Spinner } from '../components/ui'
 import SectorTemplates from '../components/SectorTemplates'
@@ -63,7 +63,10 @@ export default function Cartographie() {
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <h1 className="text-xl font-bold">{t('carto.title')}</h1>
-        <select className="input w-auto ms-auto" value={cid ?? ''} aria-label={t('carto.pick')}
+        <button className="btn-ghost btn-sm ms-auto"
+                onClick={() => dl(`/companies/${cid}/export/cartographie.xlsx`, `cartographie_${cid}.xlsx`)}>
+          {t('carto.exportXlsx')}</button>
+        <select className="input w-auto" value={cid ?? ''} aria-label={t('carto.pick')}
                 onChange={(e) => setCompanyId(Number(e.target.value))}>
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>

@@ -10,6 +10,7 @@ from .models import (PersonalDataCategory, DataSubjectCategory, SecurityMeasure,
 from .serializers import (DataCatSerializer, SubjectCatSerializer, SecuritySerializer,
                           ProcessorSerializer, ProcessingSerializer, ProcessingDataItemSerializer,
                           ProcessingTemplateSerializer)
+from .exports import processing_pdf
 
 class RefsView(APIView):
     def get(self, request):
@@ -52,7 +53,7 @@ class ProcessingViewSet(AuditModelViewSet):
         qs = scope_to_company(
             ProcessingActivity.objects.select_related('company')
             .prefetch_related('assessments','data_categories','subject_categories',
-                              'security_measures','processors'),
+                              'security_measures','processors','data_items__category'),
             self.request.user)
         company = self.request.query_params.get('company')
         if company: qs = qs.filter(company_id=company)
@@ -65,6 +66,26 @@ class ProcessingViewSet(AuditModelViewSet):
         old = _snap(serializer.instance)
         instance = serializer.save(version_minor=serializer.instance.version_minor + 1)
         log(self.request.user, 'update', instance, old=old, request=self.request)
+
+    @action(detail=True, methods=['post'])
+    def merge(self, request, pk=None):
+        """Fusionne un traitement proposé dans un traitement existant (§6)."""
+        source = self.get_object()
+        target_id = request.data.get('target')
+        target = self.get_queryset().filter(pk=target_id).first()
+        if not target or target.pk == source.pk:
+            return Response({'detail': 'Traitement cible invalide.'}, status=400)
+        note = f"\n\n[Fusionné avec {source.reference} « {source.name} »] {source.purpose or ''}".rstrip()
+        target.description = (target.description or '') + note
+        target.save(update_fields=['description'])
+        log(self.request.user, 'update', target, request=self.request)
+        log(self.request.user, 'delete', source, request=self.request)
+        source.delete()
+        return Response(ProcessingSerializer(target).data)
+
+    @action(detail=True, methods=['get'], url_path='export/fiche.pdf')
+    def export_fiche(self, request, pk=None):
+        return processing_pdf(self.get_object())
 
     @action(detail=True, methods=['get'])
     def history(self, request, pk=None):

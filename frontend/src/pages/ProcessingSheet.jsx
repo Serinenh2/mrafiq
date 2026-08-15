@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '../api/client'
+import api, { downloadFile as dl } from '../api/client'
 import { useApp } from '../context/AppContext'
 import { StatusBadge, Spinner } from '../components/ui'
 
@@ -261,6 +261,9 @@ export default function ProcessingSheet() {
         </div>
         <div className="ms-auto flex items-center gap-3">
           <span className="text-xs text-ink-muted data">{t('proc.version')} {proc.version}</span>
+          <button className="btn-ghost btn-sm"
+                  onClick={() => dl(`/processings/${pid}/export/fiche.pdf/`, `fiche_${proc.reference}.pdf`)}>
+            {t('proc.exportPdf')}</button>
           <StatusBadge status={form.status} />
           <select className="input w-auto py-1 text-sm" value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}>

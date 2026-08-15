@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (DomainViewSet, LegalReferenceViewSet, RequirementViewSet,
                     AssessmentViewSet, GapViewSet, ActionViewSet,
                     ComplianceRunView, ScoreView, RegistreXlsxView, ReportPdfView,
-                    ValidationCheckView, DeclarationPdfView, AssistantView, DashboardView)
+                    ValidationCheckView, DeclarationPdfView, CompanyProfilePdfView,
+                    ActionsXlsxView, CartographieXlsxView, AssistantView, DashboardView)
 router = DefaultRouter()
 router.register('domains', DomainViewSet, basename='domain')
 router.register('legal-references', LegalReferenceViewSet, basename='legalref')
@@ -19,5 +20,8 @@ urlpatterns = [
     path('companies/<int:company_id>/export/rapport.pdf', ReportPdfView.as_view()),
     path('companies/<int:company_id>/validation-check/', ValidationCheckView.as_view()),
     path('companies/<int:company_id>/export/declaration.pdf', DeclarationPdfView.as_view()),
+    path('companies/<int:company_id>/export/fiche-entreprise.pdf', CompanyProfilePdfView.as_view()),
+    path('companies/<int:company_id>/export/plan-action.xlsx', ActionsXlsxView.as_view()),
+    path('companies/<int:company_id>/export/cartographie.xlsx', CartographieXlsxView.as_view()),
     path('companies/<int:company_id>/assistant/', AssistantView.as_view()),
 ] + router.urls

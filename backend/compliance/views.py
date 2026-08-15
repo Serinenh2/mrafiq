@@ -99,6 +99,21 @@ class DeclarationPdfView(APIView):
     def get(self, request, company_id):
         return exports.declaration_pdf(Company.objects.get(pk=company_id))
 
+class CompanyProfilePdfView(APIView):
+    permission_classes = [IsConsultantOrAdmin]
+    def get(self, request, company_id):
+        return exports.company_profile_pdf(Company.objects.get(pk=company_id))
+
+class ActionsXlsxView(APIView):
+    permission_classes = [IsConsultantOrAdmin]
+    def get(self, request, company_id):
+        return exports.actions_xlsx(Company.objects.get(pk=company_id))
+
+class CartographieXlsxView(APIView):
+    permission_classes = [IsConsultantOrAdmin]
+    def get(self, request, company_id):
+        return exports.cartographie_xlsx(Company.objects.get(pk=company_id))
+
 class AssistantView(APIView):
     """Assistant مرافق (§29-30/§48) — réponses déterministes, jamais générées librement."""
     permission_classes = [BlockOrgUser]

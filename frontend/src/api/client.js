@@ -33,4 +33,11 @@ api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+export const downloadFile = async (url, filename) => {
+  const r = await api.get(url, { responseType: 'blob' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(r.data); a.download = filename; a.click()
+  URL.revokeObjectURL(a.href)
+}
+
 export default api

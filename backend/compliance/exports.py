@@ -194,3 +194,95 @@ def declaration_pdf(company):
     resp = HttpResponse(buf.read(), content_type='application/pdf')
     resp['Content-Disposition'] = f'attachment; filename="declaration_{company.pk}.pdf"'
     return resp
+
+def company_profile_pdf(company):
+    """Fiche organisation seule (§20)."""
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=18*mm, bottomMargin=18*mm)
+    ss = getSampleStyleSheet()
+    h1 = ParagraphStyle('h1', parent=ss['Title'], textColor=INK, fontSize=20, spaceAfter=2)
+    sub = ParagraphStyle('sub', parent=ss['Normal'], textColor=BRASS, fontSize=9, spaceAfter=14)
+    body = ss['BodyText']
+    story = [
+        Paragraph('MRAFIQ — Fiche entreprise', h1),
+        Paragraph(f'{date.today().strftime("%d/%m/%Y")} · Loi n° 18-07', sub),
+        HRFlowable(width='100%', color=BRASS, thickness=2), Spacer(1, 10),
+    ]
+    rows = [
+        ['Raison sociale', company.name], ['Forme juridique', company.legal_form or '—'],
+        ['Secteur', company.sector or '—'], ['Activité principale', company.main_activity or '—'],
+        ['Registre de commerce', company.rc_number or '—'],
+        ['NIF', company.nif or '—'], ['NIS', company.nis or '—'],
+        ['Adresse', company.address or '—'],
+        ['Wilaya', company.wilaya or '—'], ['Commune', company.commune or '—'],
+        ['Site internet', company.website or '—'], ['Effectif', str(company.employees_count)],
+        ['Contact', f'{company.contact_name or "—"} · {company.contact_email or "—"} · {company.contact_phone or "—"}'],
+        ['Responsable des traitements', f'{company.controller_name or "—"} ({company.controller_qualite or "—"})'],
+        ['DPO', {'aucun': 'Sans DPO', 'en_cours': 'Désignation en cours', 'designe': 'Désigné'}[company.dpo_status]
+                + (f' — {company.dpo_name}' if company.dpo_status != 'aucun' and company.dpo_name else '')],
+        ['Systèmes informatiques', company.it_systems or '—'],
+        ['Prestataires informatiques', company.it_providers or '—'],
+        ['Organisation interne', company.internal_organisation or '—'],
+    ]
+    t = Table(rows, colWidths=[55*mm, 120*mm])
+    t.setStyle(TableStyle([
+        ('FONTSIZE', (0,0), (-1,-1), 9), ('GRID', (0,0), (-1,-1), .4, colors.HexColor('#C6D1E0')),
+        ('BACKGROUND', (0,0), (0,-1), colors.HexColor('#F5F7FB')), ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('TOPPADDING', (0,0), (-1,-1), 5), ('BOTTOMPADDING', (0,0), (-1,-1), 5)]))
+    story.append(t)
+    doc.build(story)
+    buf.seek(0)
+    resp = HttpResponse(buf.read(), content_type='application/pdf')
+    resp['Content-Disposition'] = f'attachment; filename="fiche_entreprise_{company.pk}.pdf"'
+    return resp
+
+def actions_xlsx(company):
+    """Plan d'action (§17/§41)."""
+    wb = Workbook(); ws = wb.active; ws.title = "Plan d'action"
+    headers = ['Réf.', 'Titre', 'Domaine', 'Priorité', 'Responsable', 'Échéance', 'Statut', 'Traitement', 'Commentaire']
+    ws.append(headers)
+    fill = PatternFill('solid', fgColor='0B2545')
+    for c in ws[1]:
+        c.font = Font(bold=True, color='FFFFFF'); c.fill = fill
+        c.alignment = Alignment(vertical='center')
+    for a in company.actions.select_related('processing', 'gap__requirement__domain').order_by('due_date'):
+        domain = a.gap.requirement.domain.label_fr if a.gap and a.gap.requirement else ''
+        ws.append([
+            a.reference, a.title, domain, a.get_priority_display(), a.assignee,
+            a.due_date.strftime('%d/%m/%Y') if a.due_date else '', a.get_status_display(),
+            a.processing.reference if a.processing else '', a.comment,
+        ])
+    for i, w in enumerate([10, 40, 16, 12, 18, 14, 14, 12, 30], start=1):
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+    buf = io.BytesIO(); wb.save(buf); buf.seek(0)
+    resp = HttpResponse(buf.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = f'attachment; filename="plan_action_{company.pk}.xlsx"'
+    return resp
+
+def cartographie_xlsx(company):
+    """Cartographie des flux (§19/§41) — table des relations personnes → traitement → destinataires."""
+    wb = Workbook(); ws = wb.active; ws.title = 'Cartographie'
+    headers = ['Traitement', 'Service', 'Personnes concernées', 'Catégories de données',
+               'Sous-traitants', 'Destinataires', 'Transfert à l\'étranger']
+    ws.append(headers)
+    fill = PatternFill('solid', fgColor='0B2545')
+    for c in ws[1]:
+        c.font = Font(bold=True, color='FFFFFF'); c.fill = fill
+        c.alignment = Alignment(vertical='center')
+    for p in company.processings.exclude(status__in=['propose', 'rejete']):
+        ws.append([
+            f'{p.reference} · {p.name}', p.department,
+            ', '.join(s.label_fr for s in p.subject_categories.all()),
+            ', '.join(d.label_fr for d in p.data_categories.all()),
+            ', '.join(pr.name for pr in p.processors.all()),
+            p.recipients,
+            (p.transfer_country or 'Oui') if p.transfer_abroad else 'Non',
+        ])
+    for i, w in enumerate([32, 16, 26, 26, 22, 26, 18], start=1):
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = w
+    buf = io.BytesIO(); wb.save(buf); buf.seek(0)
+    resp = HttpResponse(buf.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    resp['Content-Disposition'] = f'attachment; filename="cartographie_{company.pk}.xlsx"'
+    return resp

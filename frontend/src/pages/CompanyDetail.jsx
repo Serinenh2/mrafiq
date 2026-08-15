@@ -1,19 +1,12 @@
 import { useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '../api/client'
+import api, { downloadFile as dl } from '../api/client'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { StatusBadge, SeverityBadge, Gauge, DomainBars, Spinner } from '../components/ui'
 import CompanyForm from '../components/CompanyForm'
 import SectorTemplates from '../components/SectorTemplates'
-
-const dl = async (url, filename) => {
-  const r = await api.get(url, { responseType: 'blob' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(r.data); a.download = filename; a.click()
-  URL.revokeObjectURL(a.href)
-}
 
 export default function CompanyDetail() {
   const { id } = useParams()
@@ -159,8 +152,11 @@ function InfoTab({ companyId, company, score, lang, t }) {
     <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))' }}>
       <div className="card">
         {!editing && (
-          <div className="flex items-center mb-3">
-            <button className="btn-secondary btn-sm ms-auto" onClick={() => { setForm({ ...company }); setEditing(true) }}>
+          <div className="flex items-center gap-2 mb-3">
+            <button className="btn-ghost btn-sm ms-auto"
+                    onClick={() => dl(`/companies/${companyId}/export/fiche-entreprise.pdf`, `fiche_entreprise_${companyId}.pdf`)}>
+              {t('company.exportProfilePdf')}</button>
+            <button className="btn-secondary btn-sm" onClick={() => { setForm({ ...company }); setEditing(true) }}>
               {t('companies.edit')}</button>
           </div>
         )}
@@ -873,10 +869,36 @@ function ProcessingsTab({ companyId, sector }) {
     mutationFn: () => api.post('/processings/', { company: companyId, name: t('proc.add') }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['processings', companyId] }),
   })
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['processings', companyId] })
+  const patchStatus = useMutation({
+    mutationFn: ({ pid, status }) => api.patch(`/processings/${pid}/`, { status }),
+    onSuccess: invalidate,
+  })
+  const merge = useMutation({
+    mutationFn: ({ pid, target }) => api.post(`/processings/${pid}/merge/`, { target }),
+    onSuccess: invalidate,
+  })
+
   if (!data) return <Spinner />
+  const proposed = data.filter((p) => p.status === 'propose')
+  const others = data.filter((p) => p.status !== 'propose')
+
   return (
     <div>
       <SectorTemplates companyId={companyId} sector={sector} />
+
+      {proposed.length > 0 && (
+        <div className="mb-4">
+          <h3 className="font-semibold text-sm mb-2">{t('proc.proposedTitle')}</h3>
+          {proposed.map((p) => (
+            <ProposedRow key={p.id} p={p} others={others} t={t}
+              onAccept={() => patchStatus.mutate({ pid: p.id, status: 'brouillon' })}
+              onReject={() => patchStatus.mutate({ pid: p.id, status: 'rejete' })}
+              onMerge={(target) => merge.mutate({ pid: p.id, target })} />
+          ))}
+        </div>
+      )}
+
       <div className="card p-0 overflow-x-auto">
         <div className="flex items-center p-3">
           <button className="btn-primary btn-sm ms-auto" onClick={() => create.mutate()}>{t('proc.add')}</button>
@@ -888,7 +910,7 @@ function ProcessingsTab({ companyId, sector }) {
             <th className="th">{t('proc.conformity')}</th>
           </tr></thead>
           <tbody>
-            {data.map((p) => (
+            {others.map((p) => (
               <tr key={p.id} className="hover:bg-primary-50">
                 <td className="td data">{p.reference}</td>
                 <td className="td"><Link className="font-semibold"
@@ -902,6 +924,37 @@ function ProcessingsTab({ companyId, sector }) {
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+function ProposedRow({ p, others, onAccept, onReject, onMerge, t }) {
+  const [merging, setMerging] = useState(false)
+  const [target, setTarget] = useState('')
+  return (
+    <div className="card mb-2 py-3">
+      <div className="flex items-start gap-3">
+        <div className="flex-1">
+          <div className="font-semibold text-sm">{p.name}</div>
+          <div className="text-xs text-ink-muted">{p.purpose}</div>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button className="btn-primary btn-sm" onClick={onAccept}>{t('proc.accept')}</button>
+          <button className="btn-secondary btn-sm" onClick={() => setMerging((m) => !m)}>{t('proc.merge')}</button>
+          <button className="btn-ghost btn-sm" style={{ color: 'var(--status-nonconforme)' }} onClick={onReject}>
+            {t('proc.reject')}</button>
+        </div>
+      </div>
+      {merging && (
+        <div className="flex gap-2 items-center mt-3 pt-3 border-t border-line">
+          <select className="input py-1 text-xs w-auto" value={target} onChange={(e) => setTarget(e.target.value)}>
+            <option value="">{t('proc.mergeInto')}</option>
+            {others.map((o) => <option key={o.id} value={o.id}>{o.reference} · {o.name}</option>)}
+          </select>
+          <button className="btn-primary btn-sm" disabled={!target} onClick={() => onMerge(target)}>
+            {t('proc.mergeConfirm')}</button>
+        </div>
+      )}
     </div>
   )
 }
@@ -949,7 +1002,13 @@ function ActionsTab({ companyId }) {
   const STATUSES = ['a_faire', 'en_cours', 'en_attente', 'termine', 'valide']
   const today = new Date().toISOString().slice(0, 10)
   return (
-    <div className="card p-0 overflow-x-auto">
+    <div>
+      <div className="flex items-center mb-3">
+        <button className="btn-ghost btn-sm ms-auto"
+                onClick={() => dl(`/companies/${companyId}/export/plan-action.xlsx`, `plan_action_${companyId}.xlsx`)}>
+          {t('company.exportActionsXlsx')}</button>
+      </div>
+      <div className="card p-0 overflow-x-auto">
       <table className="w-full min-w-[680px] border-collapse">
         <thead><tr>
           <th className="th">Réf.</th><th className="th">{t('actions.title')}</th>
@@ -978,6 +1037,7 @@ function ActionsTab({ companyId }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
