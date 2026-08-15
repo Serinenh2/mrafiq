@@ -68,3 +68,66 @@ class Department(models.Model):
         ordering = ['order', 'name']
     def __str__(self):
         return f'{self.name} ({self.company.name})'
+
+class SecurityChecklistItem(models.Model):
+    """Module de sécurité — checklist organisationnelle fixe par entreprise."""
+    class Item(models.TextChoices):
+        ACCES = 'acces', "Contrôle d'accès"
+        AUTHENTIFICATION = 'authentification', 'Authentification'
+        MOTS_DE_PASSE = 'mots_de_passe', 'Mots de passe'
+        SAUVEGARDES = 'sauvegardes', 'Sauvegardes'
+        ANTIVIRUS = 'antivirus', 'Antivirus'
+        PAREFEU = 'parefeu', 'Pare-feu'
+        CHIFFREMENT = 'chiffrement', 'Chiffrement'
+        JOURNALISATION = 'journalisation', 'Journalisation'
+        HABILITATIONS = 'habilitations', 'Contrôle des habilitations'
+        PHYSIQUE = 'physique', 'Sécurité physique'
+        INCIDENTS = 'incidents', 'Gestion des incidents'
+        CONFIDENTIALITE = 'confidentialite', 'Confidentialité'
+        SENSIBILISATION = 'sensibilisation', 'Sensibilisation du personnel'
+        CHARTE = 'charte', 'Charte de sécurité'
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='security_checklist')
+    item = models.CharField(max_length=24, choices=Item.choices)
+    in_place = models.BooleanField(null=True, blank=True)  # None = à vérifier
+    notes = models.TextField(blank=True)
+    evidence = models.FileField(upload_to='security_evidence/%Y/%m/', null=True, blank=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('company', 'item')]
+        ordering = ['item']
+    def __str__(self):
+        return f'{self.item} ({self.company.name})'
+
+class RightsProcedure(models.Model):
+    """Module droits des personnes — un enregistrement par droit et par entreprise."""
+    class Droit(models.TextChoices):
+        INFORMATION = 'information', "Droit à l'information"
+        ACCES = 'acces', "Droit d'accès"
+        RECTIFICATION = 'rectification', 'Droit de rectification'
+        OPPOSITION = 'opposition', "Droit d'opposition"
+    class Niveau(models.TextChoices):
+        A_VERIFIER = 'a_verifier', 'À vérifier'
+        CONFORME = 'conforme', 'Conforme'
+        PARTIEL = 'partiel', 'Partiel'
+        NON_CONFORME = 'non_conforme', 'Non conforme'
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='rights_procedures')
+    droit = models.CharField(max_length=16, choices=Droit.choices)
+    mecanisme_existe = models.BooleanField(null=True, blank=True)
+    procedure = models.TextField(blank=True)
+    responsable = models.CharField(max_length=128, blank=True)
+    delai_interne = models.CharField(max_length=64, blank=True)
+    formulaire_existe = models.BooleanField(default=False)
+    preuve = models.FileField(upload_to='rights_evidence/%Y/%m/', null=True, blank=True)
+    niveau = models.CharField(max_length=16, choices=Niveau.choices, default=Niveau.A_VERIFIER)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('company', 'droit')]
+        ordering = ['droit']
+    def __str__(self):
+        return f'{self.droit} ({self.company.name})'

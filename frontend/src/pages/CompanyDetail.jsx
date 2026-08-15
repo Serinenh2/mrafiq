@@ -34,7 +34,7 @@ export default function CompanyDetail() {
   })
 
   if (!company) return <Spinner />
-  const TABS = ['info', 'organigramme', 'diagnostic', 'processings', 'gaps', 'actions']
+  const TABS = ['info', 'organigramme', 'diagnostic', 'processings', 'securite', 'droits', 'gaps', 'actions']
 
   return (
     <div>
@@ -68,6 +68,8 @@ export default function CompanyDetail() {
       {tab === 'organigramme' && <OrganigrammeTab companyId={id} />}
       {tab === 'diagnostic' && <DiagnosticTab companyId={id} sector={company.sector} />}
       {tab === 'processings' && <ProcessingsTab companyId={id} sector={company.sector} />}
+      {tab === 'securite' && <SecuriteTab companyId={id} />}
+      {tab === 'droits' && <DroitsTab companyId={id} />}
       {tab === 'gaps' && <GapsTab companyId={id} />}
       {tab === 'actions' && <ActionsTab companyId={id} />}
     </div>
@@ -229,6 +231,153 @@ function OrganigrammeTab({ companyId }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+const SECURITY_ORDER = ['acces', 'authentification', 'mots_de_passe', 'sauvegardes', 'antivirus', 'parefeu',
+  'chiffrement', 'journalisation', 'habilitations', 'physique', 'incidents', 'confidentialite',
+  'sensibilisation', 'charte']
+
+function SecurityItemCard({ item, onSave, t }) {
+  const [notes, setNotes] = useState(item.notes || '')
+  return (
+    <div className="card mb-3">
+      <div className="flex items-center gap-3">
+        <span className="font-semibold text-sm flex-1">{t(`security.items.${item.item}`)}</span>
+        <div className="flex gap-2">
+          {['oui', 'non'].map((v) => (
+            <button key={v}
+              className={item.in_place === (v === 'oui') ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+              onClick={() => onSave({ in_place: v === 'oui' })}>
+              {v === 'oui' ? t('diag.yes') : t('diag.no')}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid gap-2 mt-3" style={{ gridTemplateColumns: '1fr auto' }}>
+        <input className="input py-1 text-xs" placeholder={t('security.notes')} value={notes}
+               onChange={(e) => setNotes(e.target.value)} onBlur={() => onSave({ notes })} />
+        <input type="file" className="text-xs"
+               onChange={(e) => e.target.files[0] && onSave({ evidence: e.target.files[0] })} />
+      </div>
+      {item.evidence && (
+        <a className="text-xs underline mt-2 inline-block" href={item.evidence} target="_blank" rel="noreferrer">
+          {t('docValide.download')}</a>
+      )}
+    </div>
+  )
+}
+
+function SecuriteTab({ companyId }) {
+  const { t } = useApp()
+  const qc = useQueryClient()
+  const { data: items } = useQuery({ queryKey: ['security-checklist', companyId],
+    queryFn: () => api.get(`/security-checklist/?company=${companyId}`).then((r) => r.data.results ?? r.data) })
+  const update = useMutation({
+    mutationFn: ({ id, body }) => {
+      const fd = new FormData()
+      Object.entries(body).forEach(([k, v]) => { if (v != null) fd.append(k, v) })
+      return api.patch(`/security-checklist/${id}/`, fd)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['security-checklist', companyId] }),
+  })
+
+  if (!items) return <Spinner />
+  const sorted = [...items].sort((a, b) => SECURITY_ORDER.indexOf(a.item) - SECURITY_ORDER.indexOf(b.item))
+  const done = items.filter((i) => i.in_place != null).length
+
+  return (
+    <div className="max-w-2xl">
+      <div className="card mb-4 py-3 text-sm text-ink-secondary">
+        {t('security.progress')} : <b className="text-ink">{done} / {items.length}</b>
+      </div>
+      {sorted.map((it) => (
+        <SecurityItemCard key={it.id} item={it} t={t} onSave={(body) => update.mutate({ id: it.id, body })} />
+      ))}
+    </div>
+  )
+}
+
+const RIGHTS_ORDER = ['information', 'acces', 'rectification', 'opposition']
+const NIVEAU_OPTIONS = ['a_verifier', 'conforme', 'partiel', 'non_conforme']
+
+function RightCard({ item, onSave, t }) {
+  const [procedure, setProcedure] = useState(item.procedure || '')
+  const [responsable, setResponsable] = useState(item.responsable || '')
+  const [delai, setDelai] = useState(item.delai_interne || '')
+  return (
+    <div className="card mb-3">
+      <div className="flex items-center gap-3 mb-3">
+        <span className="font-semibold text-sm flex-1">{t(`rights.droits.${item.droit}`)}</span>
+        <StatusBadge status={item.niveau} />
+      </div>
+      <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))' }}>
+        <div><label className="flabel">{t('rights.mecanisme')}</label>
+          <div className="flex gap-2 mt-1">
+            {['oui', 'non'].map((v) => (
+              <button key={v}
+                className={item.mecanisme_existe === (v === 'oui') ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                onClick={() => onSave({ mecanisme_existe: v === 'oui' })}>
+                {v === 'oui' ? t('diag.yes') : t('diag.no')}
+              </button>
+            ))}
+          </div></div>
+        <div><label className="flabel">{t('rights.responsable')}</label>
+          <input className="input" value={responsable} onChange={(e) => setResponsable(e.target.value)}
+                 onBlur={() => onSave({ responsable })} /></div>
+        <div><label className="flabel">{t('rights.delai')}</label>
+          <input className="input" value={delai} onChange={(e) => setDelai(e.target.value)}
+                 onBlur={() => onSave({ delai_interne: delai })} /></div>
+        <div><label className="flabel">{t('rights.niveau')}</label>
+          <select className="input" value={item.niveau} onChange={(e) => onSave({ niveau: e.target.value })}>
+            {NIVEAU_OPTIONS.map((n) => <option key={n} value={n}>{t(`status.${n}`)}</option>)}
+          </select></div>
+      </div>
+      <div className="mt-3">
+        <label className="flabel">{t('rights.procedure')}</label>
+        <textarea className="input" rows={2} value={procedure} onChange={(e) => setProcedure(e.target.value)}
+                  onBlur={() => onSave({ procedure })} />
+      </div>
+      <div className="flex items-center gap-3 mt-3">
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={item.formulaire_existe}
+                 onChange={(e) => onSave({ formulaire_existe: e.target.checked })} />
+          {t('rights.formulaire')}
+        </label>
+        <input type="file" className="text-xs"
+               onChange={(e) => e.target.files[0] && onSave({ preuve: e.target.files[0] })} />
+        {item.preuve && (
+          <a className="text-xs underline" href={item.preuve} target="_blank" rel="noreferrer">
+            {t('docValide.download')}</a>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DroitsTab({ companyId }) {
+  const { t } = useApp()
+  const qc = useQueryClient()
+  const { data: items } = useQuery({ queryKey: ['rights-procedures', companyId],
+    queryFn: () => api.get(`/rights-procedures/?company=${companyId}`).then((r) => r.data.results ?? r.data) })
+  const update = useMutation({
+    mutationFn: ({ id, body }) => {
+      const fd = new FormData()
+      Object.entries(body).forEach(([k, v]) => { if (v != null) fd.append(k, v) })
+      return api.patch(`/rights-procedures/${id}/`, fd)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rights-procedures', companyId] }),
+  })
+
+  if (!items) return <Spinner />
+  const sorted = [...items].sort((a, b) => RIGHTS_ORDER.indexOf(a.droit) - RIGHTS_ORDER.indexOf(b.droit))
+
+  return (
+    <div className="max-w-2xl">
+      {sorted.map((it) => (
+        <RightCard key={it.id} item={it} t={t} onSave={(body) => update.mutate({ id: it.id, body })} />
+      ))}
     </div>
   )
 }
