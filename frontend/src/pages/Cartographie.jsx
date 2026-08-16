@@ -24,7 +24,7 @@ export default function Cartographie() {
 
   if (!companies || !refs) return <Spinner />
   const company = companies.find((c) => c.id === cid)
-  const list = (procs ?? []).filter((p) => !['propose', 'rejete'].includes(p.status))
+  const list = (procs ?? []).filter((p) => p.status === 'valide')
 
   const subjectIds = [...new Set(list.flatMap((p) => p.subject_categories))]
   const subjects = refs.subject_categories.filter((s) => subjectIds.includes(s.id))
@@ -72,8 +72,11 @@ export default function Cartographie() {
         </select>
       </div>
       <SectorTemplates companyId={cid} sector={company?.sector} />
+      <p className="text-xs text-ink-muted mb-3">{t('carto.validatedOnly')}</p>
       <div className="card overflow-x-auto">
-        {!procs ? <Spinner /> : (
+        {!procs ? <Spinner /> : !list.length ? (
+          <p className="text-sm text-ink-muted py-6 text-center">{t('carto.empty')}</p>
+        ) : (
           <svg width={W} height={H + 28} viewBox={`0 0 ${W} ${H + 28}`} style={{ direction: 'ltr' }}
                role="img" aria-label={t('carto.title')}>
             {[[X_LEFT, 'carto.subjects'], [X_MID, 'carto.processings'], [X_RIGHT, 'carto.recipients']]

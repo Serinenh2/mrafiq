@@ -11,4 +11,4 @@ class GeneratedDocumentSerializer(serializers.ModelSerializer):
     template_category = serializers.CharField(source='template.category', read_only=True)
     class Meta:
         model = GeneratedDocument; fields = '__all__'
-        read_only_fields = ['file', 'status', 'generated_by', 'validated_by', 'validated_at']
+        read_only_fields = ['status', 'generated_by', 'validated_by', 'validated_at']

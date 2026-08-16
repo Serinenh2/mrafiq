@@ -353,7 +353,7 @@ def cartographie_xlsx(company):
     for c in ws[1]:
         c.font = Font(bold=True, color='FFFFFF'); c.fill = fill
         c.alignment = Alignment(vertical='center')
-    for p in company.processings.exclude(status__in=['propose', 'rejete']):
+    for p in company.processings.filter(status='valide'):
         ws.append([
             f'{p.reference} · {p.name}', p.department,
             ', '.join(s.label_fr for s in p.subject_categories.all()),

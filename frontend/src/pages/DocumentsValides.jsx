@@ -26,6 +26,13 @@ export default function DocumentsValides() {
     mutationFn: (docId) => api.post(`/generated-documents/${docId}/validate/`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['generated-documents', cid] }),
   })
+  const modify = useMutation({
+    mutationFn: ({ docId, file }) => {
+      const fd = new FormData(); fd.append('file', file)
+      return api.patch(`/generated-documents/${docId}/`, fd)
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['generated-documents', cid] }),
+  })
 
   const previewUrl = previewing && (previewing.kind === 'template'
     ? `/document-templates/${previewing.id}/preview/` : `/generated-documents/${previewing.id}/preview/`)
@@ -47,7 +54,9 @@ export default function DocumentsValides() {
       </div>
 
       <div className="grid gap-3 mb-6" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))' }}>
-        {templates.map((tpl) => (
+        {templates.map((tpl) => {
+          const latest = (generated ?? []).find((d) => d.template === tpl.id)
+          return (
           <div key={tpl.id} className="card">
             <div className="flex items-start justify-between gap-2">
               <div className="text-sm font-semibold">{L(tpl, 'title_fr', 'title_ar')}</div>
@@ -60,7 +69,8 @@ export default function DocumentsValides() {
             <p className="text-xs text-ink-secondary mt-2 line-clamp-3">
               {lang === 'ar' && tpl.description_ar ? tpl.description_ar : tpl.description_fr}
             </p>
-            <div className="flex gap-2 mt-3">
+            {latest && <div className="mt-2"><StatusBadge status={latest.status} /></div>}
+            <div className="flex flex-wrap items-center gap-2 mt-3">
               <button className="btn-ghost btn-sm"
                       onClick={() => setPreviewing({ title: L(tpl, 'title_fr', 'title_ar'), kind: 'template', id: tpl.id })}>
                 {t('docValide.preview')}
@@ -69,9 +79,25 @@ export default function DocumentsValides() {
                       onClick={() => generate.mutate(tpl.id)}>
                 {t('docValide.generate')}
               </button>
+              {latest && (
+                <>
+                  <a className="btn-ghost btn-sm" href={latest.file} target="_blank" rel="noreferrer">
+                    {t('docValide.download')}</a>
+                  <label className="btn-ghost btn-sm cursor-pointer">
+                    {t('docValide.modify')}
+                    <input type="file" className="hidden"
+                           onChange={(e) => e.target.files[0] && modify.mutate({ docId: latest.id, file: e.target.files[0] })} />
+                  </label>
+                  {latest.status === 'genere' && (
+                    <button className="btn-secondary btn-sm" onClick={() => validate.mutate(latest.id)}>
+                      {t('docValide.validate')}</button>
+                  )}
+                </>
+              )}
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="card p-0 overflow-x-auto">
@@ -88,12 +114,17 @@ export default function DocumentsValides() {
                 <td className="td font-semibold">{L(d, 'template_title_fr', 'template_title_ar')}</td>
                 <td className="td data text-sm">{d.generated_at?.slice(0, 10)}</td>
                 <td className="td"><StatusBadge status={d.status} /></td>
-                <td className="td">
+                <td className="td whitespace-nowrap">
                   <button className="btn-ghost btn-sm"
                           onClick={() => setPreviewing({ title: L(d, 'template_title_fr', 'template_title_ar'), kind: 'generated', id: d.id })}>
                     {t('docValide.preview')}</button>
                   <a className="btn-ghost btn-sm ms-2" href={d.file} target="_blank" rel="noreferrer">
                     {t('docValide.download')}</a>
+                  <label className="btn-ghost btn-sm ms-2 cursor-pointer">
+                    {t('docValide.modify')}
+                    <input type="file" className="hidden"
+                           onChange={(e) => e.target.files[0] && modify.mutate({ docId: d.id, file: e.target.files[0] })} />
+                  </label>
                   {d.status === 'genere' && (
                     <button className="btn-secondary btn-sm ms-2" onClick={() => validate.mutate(d.id)}>
                       {t('docValide.validate')}</button>
