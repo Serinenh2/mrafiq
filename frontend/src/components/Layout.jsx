@@ -18,6 +18,7 @@ const ICONS = {
   reports: 'M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6',
   docValide: 'M9 12l2 2 4-4M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6',
   person: 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z',
+  anpdp: 'M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6zM9.5 12l2 2 4-4',
   assistant: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z',
 }
 
@@ -50,17 +51,19 @@ export default function Layout() {
                  style={{ color: '#5F7396' }}>{t('nav.pilotage')}</div>
             <NavLink to="/" end className={cls}><Icon d={ICONS.dash} />{t('nav.dashboard')}</NavLink>
             <NavLink to="/companies" className={cls}><Icon d={ICONS.companies} />{t('nav.companies')}</NavLink>
-            <NavLink to="/responsable-traitements" className={cls}><Icon d={ICONS.person} />{t('nav.responsable')}</NavLink>
-            <NavLink to="/dpo" className={cls}><Icon d={ICONS.person} />{t('nav.dpo')}</NavLink>
             <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pt-4 pb-1.5"
                  style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
             <NavLink to="/missions" className={cls}><Icon d={ICONS.missions} />{t('nav.missions')}</NavLink>
+            <NavLink to="/responsable-traitements" className={cls}><Icon d={ICONS.person} />{t('nav.responsable')}</NavLink>
+            <NavLink to="/dpo" className={cls}><Icon d={ICONS.person} />{t('nav.dpo')}</NavLink>
+            <NavLink to="/compte-anpdp" className={cls}><Icon d={ICONS.anpdp} />{t('nav.anpdp')}</NavLink>
             <NavLink to="/diagnostics" className={cls}><Icon d={ICONS.diagnostics} />{t('nav.diagnostics')}</NavLink>
             <NavLink to="/questionnaire" className={cls}><Icon d={ICONS.questionnaire} />{t('nav.questionnaire')}</NavLink>
-            <NavLink to="/registre" className={cls}><Icon d={ICONS.registre} />{t('nav.registre')}</NavLink>
+          
             <NavLink to="/cartographie" className={cls}><Icon d={ICONS.carto} />{t('nav.carto')}</NavLink>
             <NavLink to="/actions" className={cls}><Icon d={ICONS.actions} />{t('nav.actions')}</NavLink>
             <NavLink to="/documents-valides" className={cls}><Icon d={ICONS.docValide} />{t('nav.documentsValides')}</NavLink>
+            <NavLink to="/registre" className={cls}><Icon d={ICONS.registre} />{t('nav.registre')}</NavLink>
             <NavLink to="/assistant" className={cls}><Icon d={ICONS.assistant} />{t('nav.assistant')}</NavLink>
             <NavLink to="/rapports" className={cls}><Icon d={ICONS.reports} />{t('nav.reports')}</NavLink>
           </>

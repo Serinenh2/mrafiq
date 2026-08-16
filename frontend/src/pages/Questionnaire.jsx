@@ -5,15 +5,44 @@ import { useApp } from '../context/AppContext'
 import QuestionnaireField from '../components/QuestionnaireField'
 import {
   ENTREPRISE_FIELDS, ACTIVITIES, FICHE_SECTIONS, DIAG_FIELDS, FINAL_FIELDS,
-  RULES, COMPANY_RULES, PRIORITY_ORDER,
+  RULES, COMPANY_RULES, PRIORITY_ORDER, EMPLOYEES_OPTIONS,
 } from '../data/questionnaireSchema'
 import {
   AR_ENTREPRISE_FIELDS, AR_ACTIVITIES, AR_FICHE_SECTIONS, AR_DIAG_FIELDS, AR_FINAL_FIELDS,
-  AR_RULES, AR_COMPANY_RULES, AR_PRIORITY_ORDER,
+  AR_RULES, AR_COMPANY_RULES, AR_PRIORITY_ORDER, AR_EMPLOYEES_OPTIONS,
 } from '../data/questionnaireSchema.ar'
 import { downloadBlankQuestionnaire, downloadFilledQuestionnaire } from '../utils/questionnaireDocx'
 
 function join(arr) { return Array.isArray(arr) && arr.length ? arr.join(', ') : '—' }
+
+function normalizeText(s) {
+  return (s || '').toString().toLowerCase()
+    .normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')
+    .replace(/[^a-z0-9؀-ۿ\s]/g, ' ')
+}
+function keywordScore(query, text) {
+  const qWords = new Set(normalizeText(query).split(/\s+/).filter((w) => w.length > 2))
+  if (!qWords.size) return 0
+  const tWords = normalizeText(text).split(/\s+/)
+  let score = 0
+  tWords.forEach((w) => { if (qWords.has(w)) score += 1 })
+  return score
+}
+function retentionDisplay(a, isAr) {
+  if (isAr) {
+    if (a.duree === 'لمدة محددة' && a.dureeValeur) return `${a.dureeValeur} ${a.dureeUnite || ''}`.trim()
+    return a.duree || '—'
+  }
+  return a.duree ? (a.dureePrecise ? `${a.duree} (${a.dureePrecise})` : a.duree) : '—'
+}
+
+function bucketEmployees(count, options) {
+  const n = Number(count) || 0
+  if (n < 10) return options[0]
+  if (n <= 49) return options[1]
+  if (n <= 249) return options[2]
+  return options[3]
+}
 
 function downloadJson(data, filename) {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -29,10 +58,10 @@ export default function Questionnaire() {
   const SCHEMA = isAr
     ? { entreprise: AR_ENTREPRISE_FIELDS, activities: AR_ACTIVITIES, fiche: AR_FICHE_SECTIONS,
         diag: AR_DIAG_FIELDS, final: AR_FINAL_FIELDS, rules: AR_RULES, companyRules: AR_COMPANY_RULES,
-        priorityOrder: AR_PRIORITY_ORDER, mainActivityKey: 'mainActivity' }
+        priorityOrder: AR_PRIORITY_ORDER, mainActivityKey: 'mainActivity', employeesOptions: AR_EMPLOYEES_OPTIONS }
     : { entreprise: ENTREPRISE_FIELDS, activities: ACTIVITIES, fiche: FICHE_SECTIONS,
         diag: DIAG_FIELDS, final: FINAL_FIELDS, rules: RULES, companyRules: COMPANY_RULES,
-        priorityOrder: PRIORITY_ORDER, mainActivityKey: 'sector' }
+        priorityOrder: PRIORITY_ORDER, mainActivityKey: 'sector', employeesOptions: EMPLOYEES_OPTIONS }
 
   const STEPS = [
     t('questionnaire.stepEntreprise'), t('questionnaire.stepActivites'), t('questionnaire.stepFiches'),
@@ -41,14 +70,43 @@ export default function Questionnaire() {
 
   const { data: templates } = useQuery({ queryKey: ['processing-templates'],
     queryFn: () => api.get('/processing-templates/').then((r) => r.data) })
-  const sectorOptions = useMemo(() => [...new Set((templates ?? [])
-    .map((tpl) => (isAr && tpl.domain_ar ? tpl.domain_ar : tpl.domain_fr))
-    .filter(Boolean))].sort(), [templates, isAr])
-  const entrepriseFields = useMemo(() => SCHEMA.entreprise.map((f) =>
-    f.key === SCHEMA.mainActivityKey ? { ...f, options: sectorOptions } : f), [SCHEMA.entreprise, SCHEMA.mainActivityKey, sectorOptions])
+  const { data: companiesList } = useQuery({ queryKey: ['companies-for-questionnaire'],
+    queryFn: () => api.get('/companies/').then((r) => r.data.results ?? r.data) })
 
   const [step, setStep] = useState(0)
   const [company, setCompany] = useState({})
+
+  const { data: departments } = useQuery({ queryKey: ['departments-for-questionnaire', company.id],
+    queryFn: () => api.get(`/departments/?company=${company.id}`).then((r) => r.data.results ?? r.data),
+    enabled: !!company.id })
+
+  const mainActivityValue = company[SCHEMA.mainActivityKey]
+  const sectorOptions = useMemo(() => {
+    const domains = (templates ?? []).map((tpl) => (isAr && tpl.domain_ar ? tpl.domain_ar : tpl.domain_fr)).filter(Boolean)
+    return [...new Set(mainActivityValue ? [...domains, mainActivityValue] : domains)].sort()
+  }, [templates, isAr, mainActivityValue])
+  const entrepriseFields = useMemo(() => SCHEMA.entreprise.map((f) =>
+    f.key === SCHEMA.mainActivityKey ? { ...f, options: sectorOptions } : f), [SCHEMA.entreprise, SCHEMA.mainActivityKey, sectorOptions])
+
+  const handleSelectCompany = (e) => {
+    const name = e.target.value
+    const found = (companiesList ?? []).find((c) => c.name === name)
+    if (!found) { setCompany({ ...company, name, id: undefined }); return }
+    setCompany({
+      ...company, id: found.id, name: found.name,
+      [SCHEMA.mainActivityKey]: found.sector || company[SCHEMA.mainActivityKey],
+      employeesCount: bucketEmployees(found.employees_count, SCHEMA.employeesOptions),
+    })
+  }
+
+  const handleServiceChange = (traitementId, currentAnswers, value) => {
+    const dep = (departments ?? []).find((d) => d.name === value)
+    setTraitementAnswers(traitementId, {
+      ...currentAnswers, service: value,
+      responsable: dep ? (dep.manager_name || currentAnswers.responsable || '') : currentAnswers.responsable,
+    })
+  }
+
   const [activities, setActivities] = useState([])
   const [activitiesOtherLabel, setActivitiesOtherLabel] = useState('')
   const [traitements, setTraitements] = useState([]) // [{ id, activity, answers }]
@@ -63,20 +121,27 @@ export default function Questionnaire() {
       setTraitements(traitements.filter((t) => t.activity !== activity))
     } else {
       setActivities([...activities, activity])
-      setTraitements([...traitements, { id: `${Date.now()}-${activity}`, activity, answers: {} }])
+      setTraitements([...traitements, { id: `${Date.now()}-${activity}`, activity, answers: { nom: activity } }])
     }
   }
 
   const addOtherActivity = () => {
     const label = activitiesOtherLabel.trim()
-    if (!label) return
-    setTraitements([...traitements, { id: `${Date.now()}-${label}`, activity: label, answers: {} }])
+    if (!label || activities.includes(label)) { setActivitiesOtherLabel(''); return }
+    setActivities([...activities, label])
+    setTraitements([...traitements, { id: `${Date.now()}-${label}`, activity: label, answers: { nom: label } }])
     setActivitiesOtherLabel('')
   }
+
+  const displayedActivities = useMemo(() => [
+    ...SCHEMA.activities,
+    ...activities.filter((a) => !SCHEMA.activities.includes(a)),
+  ], [SCHEMA.activities, activities])
 
   const removeTraitement = (id) => {
     setTraitements(traitements.filter((t) => t.id !== id))
     setActiveTraitementIdx(0)
+    setComparePanel(null)
   }
 
   const setTraitementAnswers = (id, answers) => {
@@ -150,6 +215,46 @@ export default function Questionnaire() {
     return rank === 0 ? 'nonconforme' : rank === 1 ? 'partiel' : 'conforme'
   }
 
+  const [comparePanel, setComparePanel] = useState(null) // null | 'bdd' | 'mine'
+  const selectTraitement = (i) => { setActiveTraitementIdx(i); setComparePanel(null) }
+
+  const nameKey = isAr ? 'name_ar' : 'name_fr'
+  const domainKey = isAr ? 'domain_ar' : 'domain_fr'
+  const categoryKey = isAr ? 'category_ar' : 'category_fr'
+  const purposeKey = isAr ? 'purpose_ar' : 'purpose_fr'
+  const subjectsKey = isAr ? 'subject_categories_ar' : 'subject_categories_fr'
+  const dataKey = isAr ? 'data_categories_ar' : 'data_categories_fr'
+  const retentionKey = isAr ? 'retention_ar' : 'retention_fr'
+
+  const bddMatches = useMemo(() => {
+    if (!activeTraitement) return []
+    const label = activeTraitement.answers.nom || activeTraitement.activity
+    const sectorValue = company[SCHEMA.mainActivityKey]
+    let pool = templates ?? []
+    if (sectorValue) {
+      const domainMatches = pool.filter((tpl) => tpl[domainKey] === sectorValue)
+      if (domainMatches.length) pool = domainMatches
+    }
+    return pool
+      .map((tpl) => ({ tpl, score: keywordScore(label, `${tpl[nameKey]} ${tpl[categoryKey]}`) }))
+      .filter((x) => x.score > 0 || pool.length <= 8)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map((x) => x.tpl)
+  }, [templates, activeTraitement, company, SCHEMA.mainActivityKey, domainKey, nameKey, categoryKey])
+
+  const mineDonnees = activeTraitement ? [
+    ...(activeTraitement.answers.donneesIdentification || []),
+    ...(activeTraitement.answers.donneesPro || []),
+    ...(activeTraitement.answers.donneesFin || []),
+    ...(activeTraitement.answers.donneesElec || []),
+  ] : []
+  const mineSecurite = activeTraitement ? [
+    ...(activeTraitement.answers.securiteInfo || []),
+    ...(activeTraitement.answers.securiteOrga || []),
+    ...(activeTraitement.answers.securitePhysique || []),
+  ] : []
+
   return (
     <div>
       <div className="flex items-center gap-3 mb-5 flex-wrap">
@@ -175,7 +280,14 @@ export default function Questionnaire() {
       {step === 0 && (
         <div className="card grid gap-4">
           <p className="text-sm text-ink-secondary">{t('questionnaire.entrepriseIntro')}</p>
-          {entrepriseFields.map((f) => (
+          <div>
+            <label className="flabel">{entrepriseFields.find((f) => f.key === 'name')?.label}</label>
+            <select className="input" value={company.name || ''} onChange={handleSelectCompany}>
+              <option value="">—</option>
+              {(companiesList ?? []).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+            </select>
+          </div>
+          {entrepriseFields.filter((f) => f.key !== 'name').map((f) => (
             <QuestionnaireField key={f.key} field={f} answers={company} setAnswers={setCompany} />
           ))}
         </div>
@@ -185,7 +297,7 @@ export default function Questionnaire() {
         <div className="card">
           <p className="text-sm text-ink-secondary mb-3">{t('questionnaire.activitiesIntro')}</p>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {SCHEMA.activities.map((a) => (
+            {displayedActivities.map((a) => (
               <label key={a} className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
                 <input type="checkbox" checked={activities.includes(a)} onChange={() => toggleActivity(a)} />
                 {a}
@@ -213,25 +325,81 @@ export default function Questionnaire() {
             <div className="flex gap-1 mb-4 overflow-x-auto">
               {traitements.map((tr, i) => (
                 <button key={tr.id} className={i === activeTraitementIdx ? 'tab-active' : 'tab'}
-                        onClick={() => setActiveTraitementIdx(i)}>
+                        onClick={() => selectTraitement(i)}>
                   {tr.answers.nom || tr.activity}
                 </button>
               ))}
             </div>
             {activeTraitement && (
               <div>
-                <div className="flex justify-end mb-3">
+                <div className="flex justify-end gap-2 mb-3 flex-wrap">
+                  <button className={comparePanel === 'bdd' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                          onClick={() => setComparePanel(comparePanel === 'bdd' ? null : 'bdd')}>
+                    {t('questionnaire.showBdd')}
+                  </button>
+                  <button className={comparePanel === 'mine' ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}
+                          onClick={() => setComparePanel(comparePanel === 'mine' ? null : 'mine')}>
+                    {t('questionnaire.showMine')}
+                  </button>
                   <button className="btn-ghost btn-sm" onClick={() => removeTraitement(activeTraitement.id)}>
                     {t('questionnaire.removeTraitement')}
                   </button>
                 </div>
+
+                {comparePanel === 'bdd' && (
+                  <div className="card mb-4" style={{ borderInlineStart: '3px solid var(--brand-primary-600)' }}>
+                    <h3 className="font-semibold text-sm mb-3">{t('questionnaire.bddPanelTitle')}</h3>
+                    {!bddMatches.length && <p className="text-sm text-ink-muted">{t('questionnaire.noBddMatch')}</p>}
+                    <div className="grid gap-4">
+                      {bddMatches.map((tpl) => (
+                        <div key={tpl.ref_id} className="text-sm border-b border-line pb-3">
+                          <div className="font-semibold mb-1">{tpl[nameKey]}</div>
+                          <div><b>{t('questionnaire.refCategory')} :</b> {tpl[categoryKey] || '—'}</div>
+                          <div><b>{t('questionnaire.thFinalite')} :</b> {tpl[purposeKey] || '—'}</div>
+                          <div><b>{t('questionnaire.thPersonnes')} :</b> {tpl[subjectsKey] || '—'}</div>
+                          <div><b>{t('questionnaire.refData')} :</b> {tpl[dataKey] || '—'}</div>
+                          <div><b>{t('questionnaire.refRetention')} :</b> {tpl[retentionKey] || '—'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {comparePanel === 'mine' && (
+                  <div className="card mb-4" style={{ borderInlineStart: '3px solid var(--brand-brass-500)' }}>
+                    <h3 className="font-semibold text-sm mb-3">{t('questionnaire.minePanelTitle')}</h3>
+                    <div className="text-sm grid gap-1">
+                      <div><b>{t('questionnaire.thTraitement')} :</b> {activeTraitement.answers.nom || activeTraitement.activity}</div>
+                      <div><b>{t('questionnaire.thService')} :</b> {activeTraitement.answers.service || '—'}</div>
+                      <div><b>{t('questionnaire.thResponsable')} :</b> {activeTraitement.answers.responsable || '—'}</div>
+                      <div><b>{t('questionnaire.thFinalite')} :</b> {join(activeTraitement.answers.finalites)}</div>
+                      <div><b>{t('questionnaire.thPersonnes')} :</b> {join(activeTraitement.answers.personnes)}</div>
+                      <div><b>{t('questionnaire.refData')} :</b> {join(mineDonnees)}</div>
+                      <div><b>{t('questionnaire.refRetention')} :</b> {retentionDisplay(activeTraitement.answers, isAr)}</div>
+                      <div><b>{t('questionnaire.mineSecurity')} :</b> {join(mineSecurite)}</div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid gap-4">
                   {SCHEMA.fiche.map((section) => (
                     <div key={section.id} className="card grid gap-4">
                       <h2 className="font-semibold text-sm text-ink-secondary uppercase tracking-wide">{section.title}</h2>
                       {section.fields.map((f) => (
-                        <QuestionnaireField key={f.key} field={f} answers={activeTraitement.answers}
-                          setAnswers={(a) => setTraitementAnswers(activeTraitement.id, a)} />
+                        f.key === 'service' ? (
+                          <div key={f.key}>
+                            <label className="flabel">{f.label}</label>
+                            <input className="input" list={`org-services-${activeTraitement.id}`}
+                                   value={activeTraitement.answers.service || ''}
+                                   onChange={(e) => handleServiceChange(activeTraitement.id, activeTraitement.answers, e.target.value)} />
+                            <datalist id={`org-services-${activeTraitement.id}`}>
+                              {(departments ?? []).map((d) => <option key={d.id} value={d.name} />)}
+                            </datalist>
+                          </div>
+                        ) : (
+                          <QuestionnaireField key={f.key} field={f} answers={activeTraitement.answers}
+                            setAnswers={(a) => setTraitementAnswers(activeTraitement.id, a)} />
+                        )
                       ))}
                     </div>
                   ))}

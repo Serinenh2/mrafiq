@@ -64,6 +64,12 @@ class Company(models.Model):
     dpo_phone = models.CharField('Téléphone', max_length=32, blank=True)
     dpo_email = models.EmailField('Email', blank=True)
     dpo_specialite = models.CharField('Diplôme ou spécialité', max_length=255, blank=True)
+
+    # Compte ANPDP (Autorité Nationale de Protection des Données à caractère Personnel)
+    anpdp_created_at = models.DateField('Date de création du compte', null=True, blank=True)
+    anpdp_username = models.CharField("Nom d'utilisateur", max_length=128, blank=True)
+    anpdp_password = models.CharField('Mot de passe', max_length=128, blank=True)
+
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
