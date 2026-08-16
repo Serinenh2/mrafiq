@@ -11,6 +11,7 @@ const ICONS = {
   companies: 'M3 21h18M5 21V7l7-4 7 4v14M9 9h.01M9 13h.01M15 9h.01M15 13h.01',
   missions: 'M9 3h6l1 3h4v15H4V6h4zM9 3v3h6V3M9 12h6M9 16h6',
   diagnostics: 'M12 3a9 9 0 109 9 9 9 0 00-9-9zM12 7v5l3 3',
+  questionnaire: 'M9 12h6M9 16h6M9 8h2M6 3h9l3 3v15H6z',
   registre: 'M4 6h16M4 12h16M4 18h10',
   carto: 'M6 3.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM18 3.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM12 15.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5zM7.5 7.5l3 8M16.5 7.5l-3 8',
   actions: 'M9 11l3 3 8-8M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9',
@@ -41,6 +42,7 @@ export default function Layout() {
             <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pb-1.5"
                  style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
             <NavLink to="/diagnostics" className={cls}><Icon d={ICONS.diagnostics} />{t('nav.diagnostics')}</NavLink>
+            <NavLink to="/questionnaire" className={cls}><Icon d={ICONS.questionnaire} />{t('nav.questionnaire')}</NavLink>
           </>
         ) : (
           <>
@@ -54,6 +56,7 @@ export default function Layout() {
                  style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
             <NavLink to="/missions" className={cls}><Icon d={ICONS.missions} />{t('nav.missions')}</NavLink>
             <NavLink to="/diagnostics" className={cls}><Icon d={ICONS.diagnostics} />{t('nav.diagnostics')}</NavLink>
+            <NavLink to="/questionnaire" className={cls}><Icon d={ICONS.questionnaire} />{t('nav.questionnaire')}</NavLink>
             <NavLink to="/registre" className={cls}><Icon d={ICONS.registre} />{t('nav.registre')}</NavLink>
             <NavLink to="/cartographie" className={cls}><Icon d={ICONS.carto} />{t('nav.carto')}</NavLink>
             <NavLink to="/actions" className={cls}><Icon d={ICONS.actions} />{t('nav.actions')}</NavLink>

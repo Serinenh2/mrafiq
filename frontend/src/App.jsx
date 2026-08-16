@@ -11,6 +11,7 @@ import ProcessingSheet from './pages/ProcessingSheet'
 import Registre from './pages/Registre'
 import Actions from './pages/Actions'
 import Diagnostics from './pages/Diagnostics'
+import Questionnaire from './pages/Questionnaire'
 import Missions from './pages/Missions'
 import MissionDetail from './pages/MissionDetail'
 import Cartographie from './pages/Cartographie'
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/missions" element={<Missions />} />
         <Route path="/missions/:id" element={<MissionDetail />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
+        <Route path="/questionnaire" element={<Questionnaire />} />
         <Route path="/registre" element={<Registre />} />
         <Route path="/cartographie" element={<Cartographie />} />
         <Route path="/actions" element={<Actions />} />
