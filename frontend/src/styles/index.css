@@ -17,6 +17,14 @@ html[dir="rtl"] body{font-family:var(--font-arabic); line-height:1.8}
   .btn-danger{@apply btn text-white;background:var(--status-nonconforme);}
   .btn-sm{@apply px-3 py-1 text-sm rounded-sm;}
   .input{@apply w-full text-sm bg-surface border border-line-strong rounded-md px-3 py-2 outline-none focus:border-primary-600;color:var(--text-primary);}
+  .file-input{@apply block text-sm;color:var(--text-secondary);}
+  .file-input::file-selector-button,.file-input::-webkit-file-upload-button{
+    @apply inline-flex items-center gap-2 rounded-md text-sm font-semibold px-4 py-2 cursor-pointer border border-line-strong bg-surface text-ink transition-all duration-fast ease-out;
+    margin-inline-end:.75rem;}
+  .file-input::file-selector-button:hover,.file-input::-webkit-file-upload-button:hover{
+    @apply border-primary-600 text-primary-600;background:var(--brand-primary-050);}
+  .file-input::file-selector-button:active,.file-input::-webkit-file-upload-button:active{
+    @apply bg-primary-600 text-white border-primary-600;}
   .flabel{@apply block text-sm font-semibold mb-1.5;}
   .badge{@apply inline-flex items-center gap-1.5 rounded-pill px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap;}
   .badge::before{content:""; width:7px; height:7px; border-radius:50%; background:currentColor;}

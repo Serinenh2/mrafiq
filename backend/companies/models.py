@@ -160,3 +160,28 @@ class RightsProcedure(models.Model):
         ordering = ['droit']
     def __str__(self):
         return f'{self.droit} ({self.company.name})'
+
+class AnpdpDossierItem(models.Model):
+    """Dossier de demande de conformité ANPDP — pièces requises, une entrée fixe par entreprise."""
+    class Item(models.TextChoices):
+        FORMULAIRE = 'formulaire', 'Formulaire signé'
+        RDV = 'rdv', 'Fiche de réservation du rendez-vous'
+        CONTRAT_SOUS_TRAITANT = 'contrat_sous_traitant', 'Contrat conclu avec le sous-traitant'
+        CONTRAT_DESTINATAIRE = 'contrat_destinataire', 'Contrat conclu avec le destinataire (transfert à l’étranger)'
+        STATUTS = 'statuts', "Statuts de l'organisme"
+        DELEGATION_SIGNATURE = 'delegation_signature', 'Délégation de signature'
+        REGISTRE_COMMERCE = 'registre_commerce', 'Registre de commerce'
+        AUTORISATION_ACTIVITE = 'autorisation_activite', "Autorisation d'exercice de l'activité"
+
+    company = models.ForeignKey(Company, on_delete=models.CASCADE, related_name='anpdp_dossier_items')
+    item = models.CharField(max_length=32, choices=Item.choices)
+    available = models.BooleanField(default=False)
+    file = models.FileField(upload_to='anpdp_dossier/%Y/%m/', null=True, blank=True)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='+')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [('company', 'item')]
+        ordering = ['item']
+    def __str__(self):
+        return f'{self.item} ({self.company.name})'

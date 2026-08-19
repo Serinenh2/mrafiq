@@ -19,6 +19,7 @@ const ICONS = {
   docValide: 'M9 12l2 2 4-4M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9zM14 3v6h6',
   person: 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z',
   anpdp: 'M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6zM9.5 12l2 2 4-4',
+  dossier: 'M4 4h10l6 6v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zM13 4v6h6M9 13h6M9 17h6',
   assistant: 'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z',
 }
 
@@ -51,6 +52,7 @@ export default function Layout() {
                  style={{ color: '#5F7396' }}>{t('nav.pilotage')}</div>
             <NavLink to="/" end className={cls}><Icon d={ICONS.dash} />{t('nav.dashboard')}</NavLink>
             <NavLink to="/companies" className={cls}><Icon d={ICONS.companies} />{t('nav.companies')}</NavLink>
+            <NavLink to="/dossier-conformite-anpdp" className={cls}><Icon d={ICONS.dossier} />{t('nav.anpdpDossier')}</NavLink>
             <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pt-4 pb-1.5"
                  style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
             <NavLink to="/missions" className={cls}><Icon d={ICONS.missions} />{t('nav.missions')}</NavLink>

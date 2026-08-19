@@ -4,10 +4,11 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import IsAuthenticated
 from accounts.permissions import IsConsultantOrAdmin, ReadAnyWriteConsultant, scope_to_company, is_scoped_to_own_company
 from audit.utils import AuditModelViewSet, log, _snap
-from .models import Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure, Wilaya, Commune
+from .models import (Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure,
+                     AnpdpDossierItem, Wilaya, Commune)
 from .serializers import (CompanySerializer, CompanySiteSerializer, DepartmentSerializer,
                           SecurityChecklistItemSerializer, RightsProcedureSerializer,
-                          WilayaSerializer, CommuneSerializer)
+                          AnpdpDossierItemSerializer, WilayaSerializer, CommuneSerializer)
 
 class WilayaViewSet(viewsets.ReadOnlyModelViewSet):
     """Référentiel du code géographique national (§ liste déroulante wilaya/commune)."""
@@ -89,6 +90,28 @@ class RightsProcedureViewSet(AuditModelViewSet):
             RightsProcedure.objects.bulk_create([
                 RightsProcedure(company_id=company_id, droit=code)
                 for code, _ in RightsProcedure.Droit.choices if code not in existing])
+        return super().list(request, *args, **kwargs)
+    def perform_update(self, serializer):
+        old = _snap(serializer.instance)
+        instance = serializer.save(updated_by=self.request.user)
+        log(self.request.user, 'update', instance, old=old, request=self.request)
+
+class AnpdpDossierViewSet(AuditModelViewSet):
+    serializer_class = AnpdpDossierItemSerializer
+    permission_classes = [IsConsultantOrAdmin]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    def get_queryset(self):
+        qs = scope_to_company(AnpdpDossierItem.objects.all(), self.request.user)
+        company = self.request.query_params.get('company')
+        return qs.filter(company_id=company) if company else qs
+    def list(self, request, *args, **kwargs):
+        company_id = request.query_params.get('company')
+        if company_id:
+            existing = set(AnpdpDossierItem.objects.filter(company_id=company_id)
+                           .values_list('item', flat=True))
+            AnpdpDossierItem.objects.bulk_create([
+                AnpdpDossierItem(company_id=company_id, item=code)
+                for code, _ in AnpdpDossierItem.Item.choices if code not in existing])
         return super().list(request, *args, **kwargs)
     def perform_update(self, serializer):
         old = _snap(serializer.instance)

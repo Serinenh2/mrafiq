@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure, Wilaya, Commune
+from .models import (Company, CompanySite, Department, SecurityChecklistItem, RightsProcedure,
+                      AnpdpDossierItem, Wilaya, Commune)
 
 class WilayaSerializer(serializers.ModelSerializer):
     class Meta: model = Wilaya; fields = ['code', 'name_fr', 'name_ar']
@@ -21,6 +22,11 @@ class SecurityChecklistItemSerializer(serializers.ModelSerializer):
 class RightsProcedureSerializer(serializers.ModelSerializer):
     class Meta:
         model = RightsProcedure; fields = '__all__'
+        read_only_fields = ['updated_by']
+
+class AnpdpDossierItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnpdpDossierItem; fields = '__all__'
         read_only_fields = ['updated_by']
 
 class CompanySerializer(serializers.ModelSerializer):
