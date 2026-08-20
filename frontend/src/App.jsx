@@ -9,6 +9,7 @@ import ResponsableTraitements from './pages/ResponsableTraitements'
 import DPO from './pages/DPO'
 import AnpdpAccount from './pages/AnpdpAccount'
 import AnpdpDossier from './pages/AnpdpDossier'
+import DeclarationsValidees from './pages/DeclarationsValidees'
 import ProcessingSheet from './pages/ProcessingSheet'
 import Registre from './pages/Registre'
 import Actions from './pages/Actions'
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/dpo" element={<DPO />} />
         <Route path="/compte-anpdp" element={<AnpdpAccount />} />
         <Route path="/dossier-conformite-anpdp" element={<AnpdpDossier />} />
+        <Route path="/declarations-validees" element={<DeclarationsValidees />} />
         <Route path="/missions" element={<Missions />} />
         <Route path="/missions/:id" element={<MissionDetail />} />
         <Route path="/diagnostics" element={<Diagnostics />} />

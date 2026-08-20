@@ -55,6 +55,7 @@ export default function Layout() {
             <NavLink to="/dossier-conformite-anpdp" className={cls}><Icon d={ICONS.dossier} />{t('nav.anpdpDossier')}</NavLink>
             <div className="text-[.66rem] uppercase tracking-[.14em] px-3 pt-4 pb-1.5"
                  style={{ color: '#5F7396' }}>{t('nav.conformite')}</div>
+            <NavLink to="/declarations-validees" className={cls}><Icon d={ICONS.registre} />{t('nav.declarations')}</NavLink>
             <NavLink to="/missions" className={cls}><Icon d={ICONS.missions} />{t('nav.missions')}</NavLink>
             <NavLink to="/responsable-traitements" className={cls}><Icon d={ICONS.person} />{t('nav.responsable')}</NavLink>
             <NavLink to="/dpo" className={cls}><Icon d={ICONS.person} />{t('nav.dpo')}</NavLink>
