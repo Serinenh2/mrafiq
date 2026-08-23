@@ -11,7 +11,7 @@ from audit.utils import AuditModelViewSet, _snap, log
 from companies.models import Company
 from .models import DocumentTemplate, GeneratedDocument
 from .serializers import DocumentTemplateSerializer, GeneratedDocumentSerializer
-from .services import merge_docx, stamp_docx, stamp_pdf, copy_as_is, preview_payload
+from .services import merge_docx, stamp_docx, stamp_pdf, stamp_decision_pdf, copy_as_is, preview_payload
 
 class DocumentTemplateViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = DocumentTemplate.objects.all()
@@ -26,6 +26,8 @@ class DocumentTemplateViewSet(viewsets.ReadOnlyModelViewSet):
         path = template.source_file.path
         if template.mergeable:
             buf = merge_docx(path, company)
+        elif template.category == DocumentTemplate.Category.DECISION and path.lower().endswith('.pdf'):
+            buf = stamp_decision_pdf(path, company)
         elif path.lower().endswith('.pdf'):
             buf = stamp_pdf(path, company)
         elif path.lower().endswith('.docx'):

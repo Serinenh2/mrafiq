@@ -13,6 +13,7 @@ const STATUS_TONE = {
 }
 const FIELDS = [
   { key: 'dpo_name', label: 'dpoPage.name' },
+  { key: 'dpo_poste', label: 'dpoPage.poste' },
   { key: 'dpo_phone', label: 'dpoPage.phone' },
   { key: 'dpo_email', label: 'dpoPage.email', type: 'email' },
   { key: 'dpo_specialite', label: 'dpoPage.specialite' },
@@ -33,7 +34,8 @@ export default function DPO() {
   const { data: generated } = useQuery({ queryKey: ['generated-documents', cid], enabled: !!cid,
     queryFn: () => api.get(`/generated-documents/?company=${cid}`).then((r) => r.data.results ?? r.data) })
   const decisionDocs = (generated ?? []).filter((d) => d.template_category === 'decision')
-  const hasValidatedDecision = decisionDocs.some((d) => d.status === 'valide')
+  const validatedDecision = decisionDocs.find((d) => d.status === 'valide')
+  const hasValidatedDecision = !!validatedDecision
   const hasGeneratedDecision = decisionDocs.length > 0
 
   const update = useMutation({
@@ -106,13 +108,20 @@ export default function DPO() {
       </div>
 
       {company.dpo_status === 'designe' && (
-        <div className="card max-w-xl py-3 text-sm"
+        <div className="card max-w-xl py-3 text-sm flex items-center gap-3 flex-wrap"
              style={hasValidatedDecision
                ? { background: 'var(--status-conforme-bg)', color: 'var(--status-conforme)' }
                : { background: 'var(--status-averifier-bg)', color: 'var(--status-averifier)' }}>
-          {hasValidatedDecision ? t('dpoPage.decisionValidated')
-            : hasGeneratedDecision ? t('dpoPage.decisionGenerated') : t('dpoPage.decisionMissing')}
-          {' '}<Link className="underline font-semibold" to="/documents-valides">{t('dpoPage.goToDocuments')}</Link>
+          <span>
+            {hasValidatedDecision ? t('dpoPage.decisionValidated')
+              : hasGeneratedDecision ? t('dpoPage.decisionGenerated') : t('dpoPage.decisionMissing')}
+            {' '}<Link className="underline font-semibold" to="/documents-valides">{t('dpoPage.goToDocuments')}</Link>
+          </span>
+          {hasValidatedDecision && company.dpo_name && (
+            <a className="btn-primary btn-sm ms-auto" href={validatedDecision.file} target="_blank" rel="noreferrer">
+              {t('dpoPage.downloadDecision')}
+            </a>
+          )}
         </div>
       )}
     </div>

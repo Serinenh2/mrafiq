@@ -61,6 +61,7 @@ class Company(models.Model):
         DESIGNE = 'designe', 'Désigné'
     dpo_status = models.CharField(max_length=16, choices=DpoStatus.choices, default=DpoStatus.AUCUN)
     dpo_name = models.CharField('Nom et prénom', max_length=128, blank=True)
+    dpo_poste = models.CharField('Poste occupé', max_length=128, blank=True)
     dpo_phone = models.CharField('Téléphone', max_length=32, blank=True)
     dpo_email = models.EmailField('Email', blank=True)
     dpo_specialite = models.CharField('Diplôme ou spécialité', max_length=255, blank=True)
